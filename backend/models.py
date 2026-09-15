@@ -244,7 +244,7 @@ class HabilitacionDePersona(Base):
     numero = Column(Text)
     fecha_obtencion = Column(Text)
     fecha_vencimiento = Column(Text)
-    estado = Column(Text, server_default="vigente")  # vigente|vencida|pendiente_confirmacion
+    estado = Column(Text, server_default="vigente")  # vigente|vencida|sin_confirmar
 
 
 class RolDeTransicion(Base):

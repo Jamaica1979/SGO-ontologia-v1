@@ -2,15 +2,15 @@
 {% block title %}Buscar{% endblock %}
 {% block content %}
 <div class="card">
-  <h2>Resultados para "{{ q }}"</h2>
+  <h2>Resultados para "{{ q }}" — {{ resultados|length }}</h2>
   {% if resultados %}
-    {% for p in resultados %}
+    {% for r in resultados %}
     <div class="row">
-      <div class="main"><a href="/ui/personas/{{ p.id }}"><strong>{{ p.nombre }} {{ p.apellido }}</strong></a></div>
+      <div class="main"><a href="{{ r.href }}"><strong>{{ r.principal }}</strong></a> <span class="meta">{{ r.sub }}</span></div>
     </div>
     {% endfor %}
   {% else %}
-    <p class="empty">Sin resultados. Probá con otro nombre.</p>
+    <p class="empty">Sin resultados. Probá con otro término.</p>
   {% endif %}
 </div>
 {% endblock %}

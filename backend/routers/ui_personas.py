@@ -40,10 +40,15 @@ def _ficha_persona_ctx(db: Session, persona_id: int):
     if p.estado_legajo != "completo":
         alertas.append({"mensaje": f"Legajo {p.estado_legajo}"})
 
+    habilitaciones = [{"id": h.id, "tipo": db.query(m.TipoDeCapacitacion).get(h.tipo_capacitacion_id).nombre,
+                       "fecha_vencimiento": h.fecha_vencimiento, "estado": h.estado}
+                      for h in db.query(m.HabilitacionDePersona).filter(m.HabilitacionDePersona.persona_id == persona_id)]
+
     return {
         "persona": p, "iniciales": (p.nombre[:1] + p.apellido[:1]).upper(),
         "convenio_nombre": p.convenio.nombre if p.convenio else None,
         "coberturas": coberturas, "capacitaciones_pendientes": pendientes, "alertas": alertas,
+        "habilitaciones": habilitaciones,
         "puestos": db.query(m.Puesto).filter(m.Puesto.vigente == 1).order_by(m.Puesto.codigo).all(),
         "plantas": db.query(m.Planta).all(),
     }
@@ -57,9 +62,18 @@ def ver_ficha(persona_id: int, request: Request, db: Session = Depends(get_db)):
 
 @router.get("/buscar", response_class=HTMLResponse)
 def buscar(q: str, request: Request, db: Session = Depends(get_db)):
-    resultados = db.query(m.Persona).filter(
-        (m.Persona.nombre.ilike(f"%{q}%")) | (m.Persona.apellido.ilike(f"%{q}%"))
-    ).filter(m.Persona.activo == 1).all()
+    ql = f"%{q}%"
+    resultados = []
+    for p in db.query(m.Persona).filter((m.Persona.nombre.ilike(ql)) | (m.Persona.apellido.ilike(ql)), m.Persona.activo == 1):
+        resultados.append({"principal": f"{p.nombre} {p.apellido}", "sub": "Persona", "href": f"/ui/personas/{p.id}"})
+    for pu in db.query(m.Puesto).filter((m.Puesto.codigo.ilike(ql)) | (m.Puesto.nombre.ilike(ql)), m.Puesto.vigente == 1):
+        resultados.append({"principal": f"{pu.codigo} — {pu.nombre}", "sub": "Puesto", "href": f"/ui/puestos/{pu.codigo}"})
+    for a in db.query(m.Actividad).filter((m.Actividad.codigo.ilike(ql)) | (m.Actividad.descripcion.ilike(ql)), m.Actividad.activo == 1).limit(15):
+        resultados.append({"principal": f"{a.codigo} — {a.descripcion}", "sub": "Actividad", "href": f"/ui/actividades/{a.codigo}"})
+    for me in db.query(m.Mecanismo).filter((m.Mecanismo.codigo.ilike(ql)) | (m.Mecanismo.nombre.ilike(ql))):
+        resultados.append({"principal": f"{me.codigo} — {me.nombre}", "sub": "Mecanismo", "href": f"/ui/mecanismos/{me.codigo}"})
+    for pl in db.query(m.Planta).filter(m.Planta.nombre.ilike(ql)):
+        resultados.append({"principal": pl.nombre, "sub": "Planta", "href": f"/ui/plantas/{pl.id}"})
     return templates.TemplateResponse(request, "buscar.html", {"q": q, "resultados": resultados})
 
 
@@ -105,3 +119,16 @@ def finalizar(asignacion_id: int, request: Request, db: Session = Depends(get_db
     db.commit()
     ctx = _ficha_persona_ctx(db, persona_id)
     return templates.TemplateResponse(request, "_coberturas.html", ctx)
+
+
+@router.post("/personas/{persona_id}/habilitaciones/{habilitacion_id}/confirmar", response_class=HTMLResponse)
+def confirmar_habilitacion(persona_id: int, habilitacion_id: int, request: Request, db: Session = Depends(get_db)):
+    """Action Type: ConfirmarHabilitacion — pasa una habilitación de
+    'pendiente_confirmacion' a 'vigente' una vez verificada."""
+    h = db.query(m.HabilitacionDePersona).get(habilitacion_id)
+    if h and h.estado == "sin_confirmar":
+        log_historial(db, "habilitaciones_persona", h.id, "ConfirmarHabilitacion", antes={"estado": h.estado})
+        h.estado = "vigente"
+        db.commit()
+    ctx = _ficha_persona_ctx(db, persona_id)
+    return templates.TemplateResponse(request, "_habilitaciones.html", ctx)

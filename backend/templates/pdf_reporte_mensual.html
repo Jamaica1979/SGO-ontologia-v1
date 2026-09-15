@@ -1,0 +1,39 @@
+<html><head><style>
+@page { size: A4; margin: 1.8cm 1.8cm; }
+body { font-family: Helvetica, Arial, sans-serif; color:#1A1A1A; font-size:9.5pt; line-height:1.4; }
+.header { background-color:#0A2640; padding:16px 20px; margin-bottom:16px; }
+.header .brand { color:#E0A82E; font-size:9pt; font-weight:bold; margin:0 0 4px 0; }
+.header h1 { color:#ffffff; font-size:19pt; margin:0 0 2px 0; }
+.header .sub { color:#CADCFC; font-size:10.5pt; margin:0; }
+table { width:100%; border-collapse:collapse; margin-top:6px; }
+th { background-color:#1B3A5C; color:#fff; font-size:8.5pt; padding:6px 8px; text-align:left; }
+td { padding:5px 8px; border-bottom:1px solid #EEF1F4; font-size:8.5pt; }
+.semaforo { font-weight:bold; padding:2px 8px; border-radius:3px; }
+.verde { background-color:#D9EAD3; color:#2E7D52; }
+.amarillo { background-color:#FBF0D5; color:#B8860B; }
+.rojo { background-color:#F8D7D5; color:#B0413E; }
+.gris { background-color:#EEEEEE; color:#6B7785; }
+.footer { margin-top:20px; padding-top:10px; border-top:1px solid #DDE4EC; font-size:8pt; color:#6B7785; text-align:center; }
+</style></head><body>
+
+<div class="header">
+    <p class="brand">CANTERA ELDORADO S.A. — SISTEMA DE GESTION ORGANIZACIONAL</p>
+    <h1>Reporte mensual de indicadores</h1>
+    <p class="sub">Período {{ periodo }} — MC-10</p>
+</div>
+
+<table>
+<tr><th>Código</th><th>Indicador</th><th>Área</th><th>Valor</th><th>Semáforo</th></tr>
+{% for f in filas %}
+<tr>
+    <td>{{ f.codigo }}</td>
+    <td>{{ f.nombre }}</td>
+    <td>{{ f.area }}</td>
+    <td>{{ f.valor or '—' }}</td>
+    <td>{% if f.semaforo %}<span class="semaforo {{ {'verde':'verde','amarillo':'amarillo','rojo':'rojo'}.get(f.semaforo, 'gris') }}">{{ f.semaforo if f.semaforo != 'requiere_criterio' else 'a revisar' }}</span>{% else %}<span class="semaforo gris">sin dato</span>{% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+
+<div class="footer">Sistema de Gestion Organizacional - Cantera Eldorado S.A. - Generado el {{ fecha }}</div>
+</body></html>

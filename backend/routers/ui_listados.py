@@ -65,4 +65,6 @@ def procedimientos(request: Request, db: Session = Depends(get_db)):
 def indicadores(request: Request, db: Session = Depends(get_db)):
     items = [{"principal": f"{i.codigo} — {i.nombre}", "sub": i.area, "href": f"/ui/indicadores/{i.codigo}"}
               for i in db.query(m.Indicador).filter(m.Indicador.activo == 1).order_by(m.Indicador.codigo)]
-    return _render(request, "Tablero de KPIs", items)
+    return templates.TemplateResponse(request, "listado.html", {
+        "titulo": "Tablero de KPIs", "items": items,
+        "extra_link": {"texto": "⬇ Reporte mensual completo (PDF)", "href": "/ui/reporte/pdf"}})

@@ -7,21 +7,20 @@ automáticamente desde ahí.
 
 ## Estado del proyecto — importante antes de usarlo
 
-**Construido y probado (Etapas 1 a 5):**
+**Construido y probado (Etapas 1 a 5, más historial, acciones sueltas y PDF):**
 - Esquema físico completo (24 tablas) + migración verificada desde la base v2 (cero pérdida de datos)
-- Backend organizado por Object Type, con las Actions: `AsignarPersonaAPuesto`, `FinalizarAsignacion`, `ReasignarPuesto`, `AsignarActividadSuelta`, `RegistrarCumplimientoDeMecanismo`, `CargarMedicionDeIndicador`
+- Backend organizado por Object Type, con las Actions: `AsignarPersonaAPuesto`, `FinalizarAsignacion`, `ReasignarPuesto`, `AsignarActividadSuelta`, `RegistrarCumplimientoDeMecanismo`, `CargarMedicionDeIndicador`, `ExtinguirRolDeTransicion`, `ConfirmarHabilitacion`
 - **Siete fichas de objeto**, todas conectadas entre sí por links reales: Persona, Puesto, Planta, Actividad, Mecanismo, Procedimiento, Indicador
-- **Listados** de los siete tipos de objeto — la navegación ya no depende de saber un código de memoria
+- **Listados** de los siete tipos de objeto, más un **buscador** que cubre personas, puestos, actividades, mecanismos y plantas
 - **Dashboard** con el resumen general, la bandeja de pendientes priorizada, Alertas y Riesgo de dependencia
-- **Historial de auditoría** conectado en todas las Actions — quién cambió qué y cuándo
-- Semáforo de KPIs calculado al vuelo, incluso para los indicadores cualitativos (se resuelve por coincidencia exacta de texto contra el umbral, sin necesitar que nadie elija un color a mano)
+- **Historial de auditoría**, con pantalla propia (`/ui/historial`) filtrable por tabla
+- **Exportar a PDF**: la ficha de cualquier Puesto, y el Reporte mensual de indicadores completo (equivalente al mecanismo MC-10)
 
 **Afuera a propósito:**
 - Comparador de puestos — decisión de Jamaica, cada Puesto ya tiene ficha propia y navegable
 
-**Pendiente (no forma parte de esta entrega):**
+**Pendiente:**
 - Login individual con roles
-- Exportar a PDF
 - Datos por completar: TRS-01 (puesto absorbente y fecha), etapa de los 4 casos reales de Trituración en San Borgita, confirmar si ADM-06 en Eldorado es un hueco real, la diferencia de 1 indicador contra el informe, la descripción general de los 17 procedimientos (Parte V del manual)
 - 42 de 97 pasos de procedimiento con responsabilidad conjunta o secuencial, sin un solo responsable — quedan con el texto original, no se fuerza a un solo puesto
 

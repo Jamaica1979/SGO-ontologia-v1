@@ -1,0 +1,14 @@
+<div id="habilitaciones">
+  {% if habilitaciones %}
+    {% for h in habilitaciones %}
+    <div class="row">
+      <div class="main">{{ h.tipo }}{% if h.fecha_vencimiento %} <span class="meta">vence {{ h.fecha_vencimiento }}</span>{% endif %}
+        <span class="tag {% if h.estado == 'vigente' %}ok{% elif h.estado == 'vencida' %}crit{% else %}warn{% endif %}">{{ h.estado }}</span>
+      </div>
+      {% if h.estado == 'sin_confirmar' %}
+      <button class="primary" hx-post="/ui/personas/{{ persona.id }}/habilitaciones/{{ h.id }}/confirmar" hx-target="#habilitaciones" hx-swap="outerHTML">Confirmar</button>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}<p class="empty">Sin habilitaciones registradas.</p>{% endif %}
+</div>

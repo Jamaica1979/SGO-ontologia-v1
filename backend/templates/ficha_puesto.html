@@ -8,6 +8,7 @@
       <h2>{{ puesto.codigo }} — {{ puesto.nombre }}</h2>
       <p class="sub">{{ puesto.area }} · Nivel {{ puesto.nivel }}{% if convenio %} · {{ convenio.nombre }}{% endif %}</p>
     </div>
+    <a href="/ui/puestos/{{ puesto.codigo }}/pdf" target="_blank" class="btn" style="margin-left:auto">⬇ Exportar PDF</a>
   </div>
   {% if puesto.proposito %}<p style="margin-top:14px">{{ puesto.proposito }}</p>{% endif %}
 
@@ -20,9 +21,12 @@
   </p>
 
   {% if rol_transicion %}
-  <div class="conflict-box" style="background:#FBF3DF;border-left-color:#B8860B">
+  <div class="conflict-box" id="rol-transicion" style="background:#FBF3DF;border-left-color:#B8860B">
     ⏳ <b>Rol transitorio.</b> {{ rol_transicion.condicion_extincion or "Sin condición de extinción registrada." }}
     {% if rol_transicion.dias_para_extincion is not none %}— {{ rol_transicion.dias_para_extincion }} días para la fecha estimada.{% endif %}
+    <form hx-post="/ui/puestos/{{ puesto.codigo }}/extinguir-transicion" hx-target="#rol-transicion" hx-swap="outerHTML" style="margin-top:8px">
+      <button type="submit" class="btn" hx-confirm="¿Confirmás que este rol transitorio ya se extinguió? Queda en el historial, no se puede deshacer desde acá.">Marcar como extinguido</button>
+    </form>
   </div>
   {% endif %}
 

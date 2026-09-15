@@ -19,6 +19,9 @@
   <h3>Agregar una nueva cobertura</h3>
   <div id="nueva-asignacion">{% include "_form_nueva_asignacion.html" %}</div>
 
+  <h3>Habilitaciones</h3>
+  {% include "_habilitaciones.html" %}
+
   <h3>Capacitaciones pendientes</h3>
   {% if capacitaciones_pendientes %}
     {% for c in capacitaciones_pendientes %}<div class="row"><div class="main">{{ c.nombre }}</div></div>{% endfor %}

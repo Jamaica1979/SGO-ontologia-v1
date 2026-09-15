@@ -2,7 +2,10 @@
 {% block title %}{{ titulo }}{% endblock %}
 {% block content %}
 <div class="card">
-  <h2>{{ titulo }} — {{ items|length }}</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h2>{{ titulo }} — {{ items|length }}</h2>
+    {% if extra_link %}<a href="{{ extra_link.href }}" target="_blank" class="btn">{{ extra_link.texto }}</a>{% endif %}
+  </div>
   {% for it in items %}
   <div class="row">
     <div class="main">

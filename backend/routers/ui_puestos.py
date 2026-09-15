@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 from pathlib import Path
-from database import get_db
+from datetime import date
+from database import get_db, log_historial, to_dict
 from auth import verificar_acceso
 from functions import calcular_dias_para_extincion, calcular_cobertura
 from routers.ui_shared import asignar_o_reasignar
@@ -39,6 +40,19 @@ def ver_ficha(codigo: str, request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "ficha_puesto.html", _ctx(db, codigo))
 
 
+@router.get("/{codigo}/pdf")
+def exportar_pdf(codigo: str, db: Session = Depends(get_db)):
+    from xhtml2pdf import pisa
+    import io
+    ctx = _ctx(db, codigo)
+    ctx["fecha"] = date.today().strftime("%d/%m/%Y")
+    html = templates.get_template("pdf_ficha_puesto.html").render(**ctx)
+    buf = io.BytesIO()
+    pisa.CreatePDF(html, dest=buf)
+    return Response(content=buf.getvalue(), media_type="application/pdf",
+                     headers={"Content-Disposition": f'inline; filename="Ficha_{codigo}.pdf"'})
+
+
 @router.post("/{codigo}/asignar", response_class=HTMLResponse)
 def asignar(codigo: str, request: Request, db: Session = Depends(get_db),
             planta_id: int = Form(...), etapa: str = Form(None), persona_id: int = Form(...),
@@ -54,3 +68,17 @@ def asignar(codigo: str, request: Request, db: Session = Depends(get_db),
         "f": fila, "mostrar_puesto": False, "mostrar_planta": True, "accion_url": f"/ui/puestos/{codigo}/asignar",
         "personas": db.query(m.Persona).filter(m.Persona.activo == 1).order_by(m.Persona.apellido).all(),
         "plantas": db.query(m.Planta).all()})
+
+
+@router.post("/{codigo}/extinguir-transicion", response_class=HTMLResponse)
+def extinguir_transicion(codigo: str, request: Request, db: Session = Depends(get_db)):
+    """Action Type: ExtinguirRolDeTransicion — cierra formalmente un rol
+    transitorio (ej. TRS-01) una vez que se completó la condición de extinción."""
+    p = db.query(m.Puesto).filter(m.Puesto.codigo == codigo).first()
+    rol = db.query(m.RolDeTransicion).filter(m.RolDeTransicion.puesto_id == p.id, m.RolDeTransicion.estado == "vigente").first()
+    if rol:
+        antes = to_dict(rol)
+        rol.estado = "extinguido"
+        log_historial(db, "roles_transicion", rol.id, "ExtinguirRolDeTransicion", antes=antes)
+        db.commit()
+    return templates.TemplateResponse(request, "_rol_transicion_extinguido.html", {})

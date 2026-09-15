@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Historial{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Historial de cambios — últimos {{ eventos|length }}</h2>
+  <form method="get" style="margin-bottom:14px;display:flex;gap:8px">
+    <select name="tabla" onchange="this.form.submit()">
+      <option value="">Todas las tablas</option>
+      {% for t in tablas %}<option value="{{ t }}" {% if t == tabla_filtro %}selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+  </form>
+  {% for e in eventos %}
+  <div class="row">
+    <div class="main">
+      <div><b>{{ e.accion }}</b> <span class="meta">{{ e.tabla }} #{{ e.registro_id }}</span></div>
+      {% if e.datos_nuevos %}<div class="meta">{{ e.datos_nuevos }}</div>{% endif %}
+      <div class="meta">{{ e.timestamp }}{% if e.usuario and e.usuario != 'sistema' %} · {{ e.usuario }}{% endif %}</div>
+    </div>
+  </div>
+  {% else %}<p class="empty">Sin eventos registrados todavía.</p>{% endfor %}
+</div>
+{% endblock %}

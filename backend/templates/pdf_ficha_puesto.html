@@ -1,0 +1,45 @@
+<html><head><style>
+@page { size: A4; margin: 1.8cm 1.8cm; }
+body { font-family: Helvetica, Arial, sans-serif; color:#1A1A1A; font-size:10.5pt; line-height:1.5; }
+.header { background-color:#0A2640; padding:16px 20px; margin-bottom:16px; }
+.header .brand { color:#E0A82E; font-size:9pt; font-weight:bold; margin:0 0 4px 0; }
+.header h1 { color:#ffffff; font-size:19pt; margin:0 0 2px 0; }
+.header .sub { color:#CADCFC; font-size:10.5pt; margin:0; }
+.tag { font-size:8.5pt; font-weight:bold; padding:3px 9px; background-color:#E8F0FB; color:#065A82; }
+.meta { margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid #DDE4EC; }
+h2.sec { font-size:11pt; color:#E0A82E; background-color:#0A2640; padding:6px 12px; margin:16px 0 10px 0; }
+.crit { color:#B0413E; font-weight:bold; font-size:7.5pt; }
+.row { padding:5px 0; border-bottom:1px solid #EEF1F4; font-size:9.5pt; }
+.footer { margin-top:20px; padding-top:10px; border-top:1px solid #DDE4EC; font-size:8pt; color:#6B7785; text-align:center; }
+</style></head><body>
+
+<div class="header">
+    <p class="brand">CANTERA ELDORADO S.A. — SISTEMA DE GESTION ORGANIZACIONAL</p>
+    <h1>{{ puesto.codigo }} — {{ puesto.nombre }}</h1>
+    <p class="sub">{{ puesto.area }} · Nivel {{ puesto.nivel }}{% if convenio %} · {{ convenio.nombre }}{% endif %}</p>
+</div>
+
+{% if puesto.proposito %}<p><b>Propósito:</b> {{ puesto.proposito }}</p>{% endif %}
+{% if puesto.limites_autoridad %}<p><b>Límites de autoridad:</b> {{ puesto.limites_autoridad }}</p>{% endif %}
+
+<div class="meta">
+    <b>Reporta a:</b> {{ reporta_a|join(', ') or '—' }} &nbsp;&nbsp;
+    <b>Coordina con:</b> {{ coordina_con|join(', ') or '—' }}
+</div>
+
+<h2 class="sec">ACTIVIDADES ({{ actividades|length }})</h2>
+{% for a in actividades %}
+<div class="row">{{ a.codigo }} — {{ a.descripcion }}{% if a.es_critica %} <span class="crit">CRITICA</span>{% endif %}</div>
+{% endfor %}
+
+<h2 class="sec">QUIEN LO OCUPA HOY, POR PLANTA</h2>
+{% for o in ocupantes %}
+<div class="row">{{ o.planta_nombre }}{% if o.etapa and o.etapa != 'sin_etapa' %} ({{ o.etapa }}){% endif %} —
+    {% if o.responsables %}{{ o.responsables|map(attribute='persona')|join(', ') }}{% else %}<i>vacante</i>{% endif %}</div>
+{% endfor %}
+
+<h2 class="sec">MECANISMOS DE COORDINACION</h2>
+<p style="font-size:9.5pt">{% for mp in mecanismos %}<span class="tag">{{ mp.mecanismo_codigo }} · {{ mp.rol }}</span> {% endfor %}{% if not mecanismos %}<i>Sin mecanismos vinculados.</i>{% endif %}</p>
+
+<div class="footer">Sistema de Gestion Organizacional - Cantera Eldorado S.A. - Generado el {{ fecha }}</div>
+</body></html>
