@@ -1,0 +1,23 @@
+{% if coberturas %}
+  {% for c in coberturas %}
+  <div class="row" id="cobertura-{{ c.asignacion_id }}">
+    <div class="main">
+      <div>
+        {% if c.puesto_codigo %}
+          <a href="/ui/puestos/{{ c.puesto_codigo }}"><strong>{{ c.puesto_codigo }}</strong> — {{ c.puesto_nombre }}</a>
+        {% else %}
+          📎 {{ c.perfil_nombre }}
+        {% endif %}
+        <span class="tag {% if c.estado == 'activa' %}ok{% else %}warn{% endif %}">{{ c.estado }}</span>
+      </div>
+      <div class="meta">{{ c.planta }}{% if c.etapa and c.etapa != 'sin_etapa' %} · {{ c.etapa }}{% endif %}</div>
+    </div>
+    <button class="danger"
+      hx-delete="/ui/asignaciones/{{ c.asignacion_id }}"
+      hx-target="#coberturas" hx-swap="innerHTML"
+      hx-confirm="¿Finalizar esta cobertura? Queda en el historial, no se borra.">Finalizar</button>
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="empty">Sin coberturas activas.</p>
+{% endif %}

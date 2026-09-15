@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ actividad.codigo }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="persona-head">
+    <div class="avatar">{{ actividad.codigo[-2:] }}</div>
+    <div>
+      <h2>{{ actividad.codigo }}</h2>
+      <p class="sub">{{ actividad.area }} · Nivel {{ actividad.nivel }}{% if actividad.es_critica %} · <span class="tag crit">crítica</span>{% endif %}</p>
+    </div>
+  </div>
+  <p style="margin-top:14px">{{ actividad.descripcion }}</p>
+
+  <h3>Puesto que la posee formalmente</h3>
+  {% if actividad.puesto_codigo %}
+    <a href="/ui/puestos/{{ actividad.puesto_codigo }}">{{ actividad.puesto_codigo }} — {{ puesto_nombre }}</a>
+  {% else %}<p class="empty">Sin puesto asignado.</p>{% endif %}
+
+  <h3>Quién la cubre hoy</h3>
+  {% if responsables %}
+    {% for r in responsables %}
+    <div class="row"><div class="main"><a href="/ui/personas/{{ r.persona_id }}">{{ r.persona }}</a>
+      <span class="meta">{{ r.planta }}{% if r.via == 'perfil' %} · vía perfil{% endif %}</span></div></div>
+    {% endfor %}
+  {% else %}<p class="empty">Nadie la tiene cubierta hoy.</p>{% endif %}
+
+  <h3>Capacitación requerida</h3>
+  {% if capacitaciones %}
+    {% for c in capacitaciones %}<span class="tag warn" style="margin:3px">{{ c }}</span>{% endfor %}
+  {% else %}<p class="empty">No requiere capacitación formal registrada.</p>{% endif %}
+</div>
+{% endblock %}

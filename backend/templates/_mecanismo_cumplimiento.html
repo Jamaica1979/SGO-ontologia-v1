@@ -1,0 +1,30 @@
+<div id="cumplimiento-actual">
+  {% if registro_actual %}
+    <p><span class="tag {% if registro_actual.estado == 'cumplido' %}ok{% elif registro_actual.estado == 'cumplido_parcial' %}warn{% else %}crit{% endif %}">
+      {{ {'cumplido':'Cumplido','cumplido_parcial':'Cumplido parcial','no_cumplido':'No cumplido'}[registro_actual.estado] }}
+    </span> — {{ periodo }}{% if registro_actual.registrado_por %} · registrado por {{ registro_actual.registrado_por }}{% endif %}</p>
+    {% if registro_actual.causa %}<p style="font-size:13px;color:var(--gray)"><b>Causa:</b> {{ registro_actual.causa }}</p>{% endif %}
+    {% if registro_actual.accion_correctiva %}<p style="font-size:13px;color:var(--gray)"><b>Acción correctiva:</b> {{ registro_actual.accion_correctiva }}</p>{% endif %}
+  {% else %}
+    <p class="empty">Todavía no se registró el cumplimiento de {{ periodo }}.</p>
+  {% endif %}
+</div>
+
+<details style="margin-top:10px">
+  <summary class="btn">{{ 'Actualizar registro' if registro_actual else '+ Registrar cumplimiento de este mes' }}</summary>
+  <form class="inline" hx-post="/ui/mecanismos/{{ mecanismo.codigo }}/cumplimiento" hx-target="#cumplimiento-wrap" hx-swap="innerHTML">
+    <label>Estado</label>
+    <select name="estado" required>
+      <option value="cumplido" {% if registro_actual and registro_actual.estado=='cumplido' %}selected{% endif %}>Cumplido</option>
+      <option value="cumplido_parcial" {% if registro_actual and registro_actual.estado=='cumplido_parcial' %}selected{% endif %}>Cumplido parcial</option>
+      <option value="no_cumplido" {% if registro_actual and registro_actual.estado=='no_cumplido' %}selected{% endif %}>No cumplido</option>
+    </select>
+    <label>Causa (si no fue cumplido)</label>
+    <input name="causa" value="{{ registro_actual.causa if registro_actual else '' }}">
+    <label>Acción correctiva</label>
+    <input name="accion_correctiva" value="{{ registro_actual.accion_correctiva if registro_actual else '' }}">
+    <label>Registrado por</label>
+    <input name="registrado_por" value="{{ registro_actual.registrado_por if registro_actual else '' }}">
+    <div class="actions"><button type="submit" class="primary">Guardar</button></div>
+  </form>
+</details>

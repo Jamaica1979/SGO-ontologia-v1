@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Cobertura del manual</h2>
+  <p style="font-size:32px;font-weight:700;margin:4px 0">{{ general.pct_cobertura }}%
+    <span style="font-size:13px;font-weight:400;color:var(--gray)">— {{ general.cubiertas }} de {{ general.total }} cubiertas</span></p>
+
+  <h3>Por planta</h3>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    {% for p in por_planta %}
+    <a href="/ui/plantas/{{ p.planta_id }}" style="flex:1;min-width:160px;background:var(--bg);border-radius:8px;padding:10px 14px;text-decoration:none;color:inherit">
+      <div style="font-size:12px;font-weight:700">{{ p.planta }}</div>
+      <div style="font-size:11px;color:var(--gray)">{{ p.cubiertas }}/{{ p.total }} cubiertas</div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>Bandeja de pendientes — {{ pendientes.total_abiertos }} abiertos</h2>
+
+  <h3 style="color:var(--crit)">Urgente — plantas en operación</h3>
+  {% if pendientes.urgente_plantas_activas %}
+    {% for f in pendientes.urgente_plantas_activas %}
+      {% with mostrar_puesto=true, mostrar_planta=true, accion_url="/ui/dashboard/asignar" %}{% include "_cobertura_fila.html" %}{% endwith %}
+    {% endfor %}
+  {% else %}<p class="empty">Nada urgente pendiente.</p>{% endif %}
+
+  <h3 style="color:var(--warn)">Antes de habilitar la planta</h3>
+  {% if pendientes.antes_de_habilitar_planta %}
+    {% for f in pendientes.antes_de_habilitar_planta %}
+      {% with mostrar_puesto=true, mostrar_planta=true, accion_url="/ui/dashboard/asignar" %}{% include "_cobertura_fila.html" %}{% endwith %}
+    {% endfor %}
+  {% else %}<p class="empty">Nada en esta categoría.</p>{% endif %}
+
+  <h3>Dato por completar — no es un hueco de cobertura</h3>
+  {% if pendientes.dato_por_completar %}
+    {% for f in pendientes.dato_por_completar %}
+      {% with mostrar_puesto=true, mostrar_planta=true %}{% include "_cobertura_fila.html" %}{% endwith %}
+    {% endfor %}
+  {% else %}<p class="empty">Nada en esta categoría.</p>{% endif %}
+
+  <h3>Sede única sin cubrir</h3>
+  {% if pendientes.sede_unica_sin_cubrir %}
+    {% for f in pendientes.sede_unica_sin_cubrir %}
+      {% with mostrar_puesto=true, mostrar_planta=false, accion_url="/ui/dashboard/asignar" %}{% include "_cobertura_fila.html" %}{% endwith %}
+    {% endfor %}
+  {% else %}<p class="empty">Nada en esta categoría.</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Alertas — {{ alertas|length }}</h2>
+  {% for a in alertas %}
+  <div class="row"><div class="main">
+    <span class="tag {% if a.nivel == 'rojo' %}crit{% else %}warn{% endif %}">{{ a.tipo }}</span> {{ a.mensaje }}
+  </div></div>
+  {% else %}<p class="empty">Sin alertas activas.</p>{% endfor %}
+</div>
+
+<div class="card">
+  <h2>Riesgo de dependencia — {{ riesgos.total }} ({{ riesgos.sin_mitigacion }} sin mitigación)</h2>
+  {% for r in riesgos.riesgos %}
+  <div class="row">
+    <div class="main">
+      <div><a href="/ui/puestos/{{ r.puesto }}"><strong>{{ r.puesto }}</strong></a> — {{ r.puesto_nombre }}
+        <span class="tag {% if r.en_mitigacion %}warn{% else %}crit{% endif %}">{{ 'en mitigación' if r.en_mitigacion else 'sin respaldo' }}</span>
+      </div>
+      <div class="meta">{{ r.planta }} · <a href="/ui/personas/{{ r.persona_id }}">{{ r.persona }}</a> es la única persona para {{ r.actividades_criticas }} actividades críticas
+        {% if r.respaldo_en_formacion %} · {{ r.respaldo_en_formacion }} en formación como respaldo{% endif %}</div>
+    </div>
+  </div>
+  {% else %}<p class="empty">Sin dependencias críticas detectadas.</p>{% endfor %}
+</div>
+{% endblock %}

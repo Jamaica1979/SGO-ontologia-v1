@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ mecanismo.codigo }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="persona-head">
+    <div class="avatar">{{ mecanismo.codigo[-2:] }}</div>
+    <div>
+      <h2>{{ mecanismo.codigo }} — {{ mecanismo.nombre }}</h2>
+      <p class="sub">{{ mecanismo.grupo }} · {{ mecanismo.frecuencia or "" }}</p>
+    </div>
+  </div>
+  {% if mecanismo.descripcion %}<p style="margin-top:14px">{{ mecanismo.descripcion }}</p>{% endif %}
+  {% if mecanismo.documento %}<p style="font-size:13px;color:var(--gray)"><b>Documento:</b> {{ mecanismo.documento }}</p>{% endif %}
+
+  <h3>Puestos vinculados</h3>
+  {% for rol, label in [('responsable','Responsable'),('emite','Emite'),('recibe','Recibe')] %}
+    {% set pcs = puestos_por_rol.get(rol, []) %}
+    {% if pcs %}<p style="font-size:13px"><b>{{ label }}:</b> {% for pc in pcs %}<a href="/ui/puestos/{{ pc }}">{{ pc }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  {% endfor %}
+
+  <h3>Cumplimiento — {{ periodo }}</h3>
+  <div id="cumplimiento-wrap">{% include "_mecanismo_cumplimiento.html" %}</div>
+
+  <h3>Historial de cumplimiento</h3>
+  {% if historial %}
+    {% for h in historial %}
+    <div class="row"><div class="main">{{ h.periodo }}
+      <span class="tag {% if h.estado == 'cumplido' %}ok{% elif h.estado == 'cumplido_parcial' %}warn{% else %}crit{% endif %}">{{ h.estado }}</span>
+    </div></div>
+    {% endfor %}
+  {% else %}<p class="empty">Sin registros anteriores.</p>{% endif %}
+</div>
+{% endblock %}

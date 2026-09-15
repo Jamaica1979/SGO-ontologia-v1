@@ -1,0 +1,19 @@
+<div class="conflict-box">
+  <p>⚠️ <b>Ya hay responsable activo para esto:</b></p>
+  <ul>
+    {% for c in conflictos %}
+    <li>{{ c.persona }} ({{ c.puesto_codigo or 'perfil' }}{% if c.etapa %}, {{ c.etapa }}{% endif %}) ya cubre: {{ c.actividades_en_conflicto|join(', ') }}</li>
+    {% endfor %}
+  </ul>
+  <p>¿Confirmás igual? Queda registrado como cobertura intencional, no reemplaza a la anterior.</p>
+  <form hx-post="/ui/personas/{{ persona_id }}/asignaciones/nueva" hx-target="#nueva-asignacion" hx-swap="innerHTML">
+    <input type="hidden" name="puesto_codigo" value="{{ puesto_codigo or '' }}">
+    <input type="hidden" name="planta_id" value="{{ planta_id }}">
+    <input type="hidden" name="etapa" value="{{ etapa or '' }}">
+    <input type="hidden" name="permitir_conflicto" value="true">
+    <div class="actions">
+      <button type="submit" class="danger">Confirmar de todas formas</button>
+      <a href="/ui/personas/{{ persona_id }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>

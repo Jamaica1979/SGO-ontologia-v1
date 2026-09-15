@@ -1,0 +1,36 @@
+<div class="row" id="cob-{{ f.puesto_codigo }}-{{ f.planta_id or 0 }}-{{ f.etapa or 0 }}">
+  <div class="main">
+    <div>
+      {% if mostrar_puesto %}<a href="/ui/puestos/{{ f.puesto_codigo }}"><strong>{{ f.puesto_codigo }}</strong> — {{ f.puesto_nombre }}</a>{% endif %}
+      {% if mostrar_planta %}<a href="/ui/plantas/{{ f.planta_id }}">{{ f.planta_nombre }}</a>{% endif %}
+      {% if f.etapa and f.etapa != 'sin_etapa' %}<span class="tag warn">{{ f.etapa }}</span>{% endif %}
+      <span class="tag {% if f.estado in ('cubierta','cubierta_sin_etapa') %}ok{% elif f.estado == 'parcial' %}warn{% else %}crit{% endif %}">
+        {{ {'cubierta':'cubierta','cubierta_sin_etapa':'cubierta, sin etapa','parcial':'parcial','sin_asignar':'sin asignar','sin_actividades':'sin actividades'}[f.estado] }}
+      </span>
+    </div>
+    <div class="meta">
+      {% if f.responsables %}{% for r in f.responsables %}<a href="/ui/personas/{{ r.persona_id }}">{{ r.persona }}</a>{% if r.via == 'perfil' %} (perfil){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+      {% else %}<span class="empty">sin responsable</span>{% endif %}
+    </div>
+  </div>
+  {% if accion_url and (f.planta_id or plantas) %}
+  <details>
+    <summary class="btn">{{ 'Reasignar' if f.responsables else '+ Asignar' }}</summary>
+    <form class="inline" hx-post="{{ accion_url }}" hx-target="closest #cob-{{ f.puesto_codigo }}-{{ f.planta_id or 0 }}-{{ f.etapa or 0 }}" hx-swap="outerHTML">
+      <input type="hidden" name="puesto_codigo" value="{{ f.puesto_codigo }}">
+      <input type="hidden" name="etapa" value="{{ f.etapa if f.etapa and f.etapa != 'sin_etapa' else '' }}">
+      {% if f.planta_id %}
+        <input type="hidden" name="planta_id" value="{{ f.planta_id }}">
+      {% else %}
+        <label>Planta donde trabaja esta persona</label>
+        <select name="planta_id" required>{% for pl in plantas %}<option value="{{ pl.id }}">{{ pl.nombre }}</option>{% endfor %}</select>
+      {% endif %}
+      <select name="persona_id" required>
+        <option value="">-- elegir persona --</option>
+        {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="primary">Confirmar</button>
+    </form>
+  </details>
+  {% endif %}
+</div>

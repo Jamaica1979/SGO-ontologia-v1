@@ -1,0 +1,30 @@
+<div id="mediciones">
+  {% if mediciones %}
+    {% for med in mediciones %}
+    <div class="row"><div class="main">{{ med.periodo }} — {{ med.valor }}
+      <span class="tag {% if med.semaforo == 'verde' %}ok{% elif med.semaforo == 'amarillo' %}warn{% elif med.semaforo == 'rojo' %}crit{% else %}warn{% endif %}">
+        {{ med.semaforo if med.semaforo != 'requiere_criterio' else 'a revisar' }}
+      </span>
+    </div></div>
+    {% endfor %}
+  {% else %}<p class="empty">Sin mediciones cargadas todavía.</p>{% endif %}
+</div>
+
+<details style="margin-top:10px">
+  <summary class="btn">+ Cargar medición</summary>
+  <form class="inline" hx-post="/ui/indicadores/{{ indicador.codigo }}/medicion" hx-target="#mediciones-wrap" hx-swap="innerHTML">
+    <label>Período (AAAA-MM)</label>
+    <input name="periodo" placeholder="2026-09" required>
+    <label>Valor</label>
+    {% if es_cualitativo %}
+      <select name="valor" required>
+        <option value="{{ indicador.umbral_verde }}">{{ indicador.umbral_verde }} (verde)</option>
+        <option value="{{ indicador.umbral_amarillo }}">{{ indicador.umbral_amarillo }} (amarillo)</option>
+        <option value="{{ indicador.umbral_rojo }}">{{ indicador.umbral_rojo }} (rojo)</option>
+      </select>
+    {% else %}
+      <input name="valor" placeholder="ej. 92%" required>
+    {% endif %}
+    <div class="actions"><button type="submit" class="primary">Guardar</button></div>
+  </form>
+</details>

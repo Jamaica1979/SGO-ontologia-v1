@@ -1,0 +1,19 @@
+<div class="conflict-box" id="cob-{{ puesto_codigo }}-{{ planta_id or 0 }}-{{ etapa or 0 }}">
+  <p>⚠️ <b>Otras actividades de este puesto ya tienen responsable:</b></p>
+  <ul>
+    {% for c in conflictos %}
+    <li>{{ c.persona }} ({{ c.puesto_codigo or 'perfil' }}{% if c.etapa %}, {{ c.etapa }}{% endif %}) ya cubre: {{ c.actividades_en_conflicto|join(', ') }}</li>
+    {% endfor %}
+  </ul>
+  <form hx-post="{{ accion_url }}" hx-target="closest .conflict-box" hx-swap="outerHTML">
+    <input type="hidden" name="puesto_codigo" value="{{ puesto_codigo }}">
+    <input type="hidden" name="planta_id" value="{{ planta_id }}">
+    <input type="hidden" name="etapa" value="{{ etapa or '' }}">
+    <input type="hidden" name="persona_id" value="{{ persona_id }}">
+    <input type="hidden" name="permitir_conflicto" value="true">
+    <div class="actions">
+      <button type="submit" class="danger">Confirmar de todas formas</button>
+      <a href="javascript:location.reload()" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>

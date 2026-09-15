@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ planta.nombre }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="persona-head">
+    <div>
+      <h2>{{ planta.nombre }}</h2>
+      <p class="sub">{{ planta.notas or "" }}</p>
+    </div>
+    <span class="tag {% if planta.estado in ('activa','piloto') %}ok{% else %}warn{% endif %}" style="margin-left:auto">{{ planta.estado }}</span>
+  </div>
+
+  <h3>Cobertura general</h3>
+  <p style="font-size:28px;font-weight:700;margin:0">{{ resumen.pct_cobertura }}%
+    <span style="font-size:13px;font-weight:400;color:var(--gray)">— {{ resumen.cubiertas }} de {{ resumen.total }} puestos cubiertos</span></p>
+
+  <h3>Cobertura por puesto</h3>
+  <div id="cobertura-planta">
+    {% for f in cobertura %}
+      {% with mostrar_puesto=true, mostrar_planta=false, accion_url="/ui/plantas/" + planta.id|string + "/asignar" %}
+        {% include "_cobertura_fila.html" %}
+      {% endwith %}
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

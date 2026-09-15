@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Buscar{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Resultados para "{{ q }}"</h2>
+  {% if resultados %}
+    {% for p in resultados %}
+    <div class="row">
+      <div class="main"><a href="/ui/personas/{{ p.id }}"><strong>{{ p.nombre }} {{ p.apellido }}</strong></a></div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="empty">Sin resultados. Probá con otro nombre.</p>
+  {% endif %}
+</div>
+{% endblock %}

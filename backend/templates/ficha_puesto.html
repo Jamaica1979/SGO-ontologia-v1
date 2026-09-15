@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ puesto.codigo }} — {{ puesto.nombre }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="persona-head">
+    <div class="avatar">{{ puesto.codigo[:2] }}</div>
+    <div>
+      <h2>{{ puesto.codigo }} — {{ puesto.nombre }}</h2>
+      <p class="sub">{{ puesto.area }} · Nivel {{ puesto.nivel }}{% if convenio %} · {{ convenio.nombre }}{% endif %}</p>
+    </div>
+  </div>
+  {% if puesto.proposito %}<p style="margin-top:14px">{{ puesto.proposito }}</p>{% endif %}
+
+  <h3>Relaciones</h3>
+  <p style="font-size:13px">
+    <b>Reporta a:</b>
+    {% for r in reporta_a %}<a href="/ui/puestos/{{ r }}">{{ r }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="empty">—</span>{% endfor %}
+    &nbsp;&nbsp;<b>Coordina con:</b>
+    {% for r in coordina_con %}<a href="/ui/puestos/{{ r }}">{{ r }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="empty">—</span>{% endfor %}
+  </p>
+
+  {% if rol_transicion %}
+  <div class="conflict-box" style="background:#FBF3DF;border-left-color:#B8860B">
+    ⏳ <b>Rol transitorio.</b> {{ rol_transicion.condicion_extincion or "Sin condición de extinción registrada." }}
+    {% if rol_transicion.dias_para_extincion is not none %}— {{ rol_transicion.dias_para_extincion }} días para la fecha estimada.{% endif %}
+  </div>
+  {% endif %}
+
+  <h3>Quién lo ocupa hoy, por planta</h3>
+  <div id="ocupantes">
+    {% for f in ocupantes %}
+      {% with mostrar_puesto=false, mostrar_planta=true, accion_url="/ui/puestos/" + puesto.codigo + "/asignar" %}
+        {% include "_cobertura_fila.html" %}
+      {% endwith %}
+    {% endfor %}
+  </div>
+
+  <h3>Actividades — {{ actividades|length }}</h3>
+  {% for a in actividades %}
+  <div class="row"><div class="main"><a href="/ui/actividades/{{ a.codigo }}">{{ a.codigo }}</a> — {{ a.descripcion }}{% if a.es_critica %} <span class="tag crit">crítica</span>{% endif %}</div></div>
+  {% endfor %}
+
+  <h3>Mecanismos de coordinación donde participa</h3>
+  {% if mecanismos %}
+    {% for mp in mecanismos %}<a href="/ui/mecanismos/{{ mp.mecanismo_codigo }}" class="tag warn" style="margin:3px;text-decoration:none">{{ mp.mecanismo_codigo }} · {{ mp.rol }}</a>{% endfor %}
+  {% else %}<p class="empty">No participa de ningún mecanismo formal.</p>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ procedimiento.codigo }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="persona-head">
+    <div class="avatar">{{ procedimiento.codigo[-2:] }}</div>
+    <div>
+      <h2>{{ procedimiento.codigo }} — {{ procedimiento.nombre }}</h2>
+      <p class="sub">{{ procedimiento.area }} · Riesgo {{ procedimiento.nivel_riesgo }}</p>
+    </div>
+  </div>
+  {% if procedimiento.descripcion %}
+    <p style="margin-top:14px">{{ procedimiento.descripcion }}</p>
+  {% else %}
+    <p class="empty" style="margin-top:14px">Sin descripción general cargada todavía (pendiente de la Parte V del manual).</p>
+  {% endif %}
+
+  <h3>Puestos que ejecutan este procedimiento</h3>
+  {% for pp in puestos %}<a href="/ui/puestos/{{ pp }}" class="tag ok" style="margin:3px;text-decoration:none">{{ pp }}</a>{% else %}<p class="empty">Sin puestos vinculados.</p>{% endfor %}
+
+  <h3>Pasos — {{ pasos|length }}</h3>
+  {% for p in pasos %}
+  <div class="row">
+    <div class="main">
+      <div><b>{{ p.numero }}.</b> {{ p.titulo }}</div>
+      <div class="meta">{{ p.descripcion }}</div>
+      <div class="meta">
+        <b>Responsable:</b>
+        {% if p.responsable_puesto_codigo %}<a href="/ui/puestos/{{ p.responsable_puesto_codigo }}">{{ p.responsable_puesto_codigo }}</a>
+        {% elif p.responsable_texto_original %}{{ p.responsable_texto_original }} <span class="tag warn">responsabilidad conjunta</span>
+        {% else %}<span class="empty">sin definir</span>{% endif %}
+        {% if p.documento %} · {{ p.documento }}{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

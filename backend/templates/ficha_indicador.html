@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ indicador.codigo }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="persona-head">
+    <div class="avatar">{{ indicador.codigo[-2:] }}</div>
+    <div>
+      <h2>{{ indicador.codigo }} — {{ indicador.nombre }}</h2>
+      <p class="sub">{{ indicador.area }} · {{ indicador.frecuencia or "" }}</p>
+    </div>
+  </div>
+  {% if indicador.formula %}<p style="margin-top:14px"><b>Fórmula:</b> {{ indicador.formula }}</p>{% endif %}
+  {% if indicador.fuente_dato %}<p style="font-size:13px;color:var(--gray)"><b>Fuente:</b> {{ indicador.fuente_dato }}</p>{% endif %}
+
+  <h3>Umbrales</h3>
+  <p style="font-size:13px">
+    <span class="tag ok">{{ indicador.umbral_verde }}</span>
+    <span class="tag warn">{{ indicador.umbral_amarillo }}</span>
+    <span class="tag crit">{{ indicador.umbral_rojo }}</span>
+  </p>
+
+  <h3>Responsables</h3>
+  <p style="font-size:13px">
+    <b>Carga:</b> {% if indicador.responsable_carga_puesto_codigo %}<a href="/ui/puestos/{{ indicador.responsable_carga_puesto_codigo }}">{{ indicador.responsable_carga_puesto_codigo }}</a>{% else %}<span class="empty">sin definir</span>{% endif %}
+    &nbsp;&nbsp;<b>Usa:</b> {% if indicador.responsable_uso_puesto_codigo %}<a href="/ui/puestos/{{ indicador.responsable_uso_puesto_codigo }}">{{ indicador.responsable_uso_puesto_codigo }}</a>{% else %}<span class="empty">sin definir</span>{% endif %}
+  </p>
+
+  <h3>Mediciones</h3>
+  <div id="mediciones-wrap">{% include "_indicador_mediciones.html" %}</div>
+</div>
+{% endblock %}

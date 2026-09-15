@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ persona.nombre }} {{ persona.apellido }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="persona-head">
+    <div class="avatar">{{ iniciales }}</div>
+    <div>
+      <h2>{{ persona.nombre }} {{ persona.apellido }}</h2>
+      <p class="sub">{{ convenio_nombre or "Sin convenio cargado" }}{% if persona.legajo %} · Legajo {{ persona.legajo }}{% endif %}</p>
+    </div>
+    <span class="tag {% if persona.estado_legajo == 'completo' %}ok{% else %}warn{% endif %}" style="margin-left:auto">
+      Legajo {{ persona.estado_legajo }}
+    </span>
+  </div>
+
+  <h3>Lo que ocupa hoy — {{ coberturas|length }} cobertura{{ "" if coberturas|length == 1 else "s" }}</h3>
+  <div id="coberturas">{% include "_coberturas.html" %}</div>
+
+  <h3>Agregar una nueva cobertura</h3>
+  <div id="nueva-asignacion">{% include "_form_nueva_asignacion.html" %}</div>
+
+  <h3>Capacitaciones pendientes</h3>
+  {% if capacitaciones_pendientes %}
+    {% for c in capacitaciones_pendientes %}<div class="row"><div class="main">{{ c.nombre }}</div></div>{% endfor %}
+  {% else %}
+    <p class="empty">Sin pendientes por ahora.</p>
+  {% endif %}
+
+  <h3>Alertas relacionadas</h3>
+  {% if alertas %}
+    {% for a in alertas %}<div class="row"><div class="main">{{ a.mensaje }}</div></div>{% endfor %}
+  {% else %}
+    <p class="empty">Ninguna alerta activa para esta persona.</p>
+  {% endif %}
+</div>
+{% endblock %}
