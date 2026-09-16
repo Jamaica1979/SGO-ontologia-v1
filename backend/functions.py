@@ -296,3 +296,44 @@ def detectar_alertas(db: Session):
             alertas.append({"tipo": "vacante", "nivel": "amarillo",
                              "mensaje": f"Puesto {f['puesto_codigo']} {f['puesto_nombre']} sin asignación activa"})
     return alertas
+
+
+# ───────────────────────── construir_arbol_organizacional ─────────────────────────
+# Sección 7, Caso 1 de la ontología: reporta_jerarquicamente_a es la única
+# relación que arma el árbol — coordina_funcionalmente_con no participa acá,
+# es una relación distinta (no jerárquica, no cabe en un organigrama de árbol).
+
+def construir_arbol_organizacional(db: Session, modo: str = "teorico", planta_id: int = None):
+    puestos = {p.codigo: p for p in db.query(m.Puesto).filter(m.Puesto.vigente == 1)}
+    hijos_de = {}
+    for r in db.query(m.RelacionReporte).filter(m.RelacionReporte.tipo == "jerarquico"):
+        hijos_de.setdefault(r.relacionado_codigo, []).append(r.puesto_codigo)
+
+    ocupantes_por_puesto = {}
+    if modo == "real":
+        q = db.query(m.Asignacion).filter(m.Asignacion.estado.in_(["activa", "transicion"]),
+                                           m.Asignacion.puesto_codigo.isnot(None))
+        for a in q.all():
+            p = puestos.get(a.puesto_codigo)
+            if not p:
+                continue
+            # sede única: se muestra sin importar qué planta se eligió; una_por_planta_activa: solo la elegida
+            if p.cardinalidad_esperada == "una_por_planta_activa" and a.planta_id != planta_id:
+                continue
+            etiqueta = f"{a.persona.nombre} {a.persona.apellido}"
+            if a.etapa and a.etapa != "sin_etapa":
+                etiqueta += f" ({a.etapa})"
+            ocupantes_por_puesto.setdefault(a.puesto_codigo, []).append(etiqueta)
+
+    def nodo(codigo):
+        p = puestos[codigo]
+        n = {"codigo": p.codigo, "nombre": p.nombre, "area": p.area,
+             "hijos": [nodo(h) for h in sorted(hijos_de.get(codigo, []))]}
+        if modo == "real":
+            n["ocupantes"] = ocupantes_por_puesto.get(codigo, [])
+            n["vacante"] = len(n["ocupantes"]) == 0
+        return n
+
+    hijos_codigos = set(r[0] for r in db.query(m.RelacionReporte.puesto_codigo).filter(m.RelacionReporte.tipo == "jerarquico"))
+    raiz = next((c for c in puestos if c not in hijos_codigos), None)
+    return nodo(raiz) if raiz else None

@@ -14,7 +14,8 @@ automáticamente desde ahí.
 - **Listados** de los siete tipos de objeto, más un **buscador** que cubre personas, puestos, actividades, mecanismos y plantas
 - **Dashboard** con el resumen general, la bandeja de pendientes priorizada, Alertas y Riesgo de dependencia
 - **Historial de auditoría**, con pantalla propia (`/ui/historial`) filtrable por tabla
-- **Exportar a PDF**: la ficha de cualquier Puesto, y el Reporte mensual de indicadores completo (equivalente al mecanismo MC-10)
+- **Exportar a PDF**: la ficha de cualquier Puesto, el Reporte mensual de indicadores completo, y el Organigrama (teórico o real, por planta)
+- **Organigrama interactivo** (`/ui/organigrama`): árbol con zoom, paneo y ramas plegables, en dos modos — Teórico (la estructura del manual) y Real (quién ocupa cada puesto hoy, por planta, con las vacantes resaltadas). El PDF se genera sin depender de un navegador en el servidor — el árbol se recalcula en Python puro (`organigrama_svg.py`) y se convierte con svglib, liviano para desplegar en Render
 
 **Afuera a propósito:**
 - Comparador de puestos — decisión de Jamaica, cada Puesto ya tiene ficha propia y navegable
@@ -66,6 +67,7 @@ app/
 ## Navegación
 
 - `/ui/dashboard` — resumen general, bandeja de pendientes, alertas, riesgo de dependencia
+- `/ui/organigrama` — árbol interactivo, teórico o real por planta, con zoom y PDF
 - `/ui/listado/{puestos|personas|plantas|actividades|mecanismos|procedimientos|indicadores}` — listados, con links a cada ficha
 - `/ui/personas/{id}`, `/ui/puestos/{codigo}`, `/ui/plantas/{id}`, `/ui/actividades/{codigo}`, `/ui/mecanismos/{codigo}`, `/ui/procedimientos/{codigo}`, `/ui/indicadores/{codigo}` — la ficha de cada objeto
 - `/api/...` — toda la API JSON, documentada automáticamente en `/docs`

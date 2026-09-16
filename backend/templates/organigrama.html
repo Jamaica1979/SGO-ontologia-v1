@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Organigrama{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Organigrama</h2>
+  <div class="og-toolbar">
+    <button id="og-btn-teorico" class="btn primary">Teórico</button>
+    <button id="og-btn-real" class="btn">Real</button>
+    <select id="og-planta" style="display:none">
+      {% for pl in plantas %}<option value="{{ pl.id }}">{{ pl.nombre }}</option>{% endfor %}
+    </select>
+    <a id="og-pdf-link" href="/ui/organigrama/pdf?modo=teorico" target="_blank" class="btn">⬇ Exportar PDF</a>
+    <div class="og-zoom-btns">
+      <button id="og-zoom-out" class="btn">−</button>
+      <button id="og-zoom-fit" class="btn">Ajustar</button>
+      <button id="og-zoom-in" class="btn">+</button>
+    </div>
+  </div>
+  <div id="og-viewport"></div>
+  <p style="font-size:11px;color:var(--gray);margin-top:8px">Click en un puesto abre su ficha · click en el círculo pliega o despliega su rama · rueda del mouse para zoom, arrastrar para mover.</p>
+</div>
+
+<script src="/static/organigrama.js"></script>
+<script>
+  const viewport = document.getElementById('og-viewport');
+  OrganigramaSGO.init(viewport);
+
+  const btnTeorico = document.getElementById('og-btn-teorico');
+  const btnReal = document.getElementById('og-btn-real');
+  const selectPlanta = document.getElementById('og-planta');
+  const pdfLink = document.getElementById('og-pdf-link');
+
+  function actualizarPdfLink() {
+    const modo = btnReal.classList.contains('primary') ? 'real' : 'teorico';
+    let href = `/ui/organigrama/pdf?modo=${modo}`;
+    if (modo === 'real') href += `&planta_id=${selectPlanta.value}`;
+    pdfLink.href = href;
+  }
+
+  function cargarTeorico() {
+    btnTeorico.classList.add('primary'); btnReal.classList.remove('primary');
+    selectPlanta.style.display = 'none';
+    OrganigramaSGO.cargar('teorico');
+    actualizarPdfLink();
+  }
+  function cargarReal() {
+    btnReal.classList.add('primary'); btnTeorico.classList.remove('primary');
+    selectPlanta.style.display = 'inline-block';
+    OrganigramaSGO.cargar('real', selectPlanta.value);
+    actualizarPdfLink();
+  }
+  btnTeorico.addEventListener('click', cargarTeorico);
+  btnReal.addEventListener('click', cargarReal);
+  selectPlanta.addEventListener('change', () => { OrganigramaSGO.cargar('real', selectPlanta.value); actualizarPdfLink(); });
+  document.getElementById('og-zoom-in').addEventListener('click', () => OrganigramaSGO.zoomIn());
+  document.getElementById('og-zoom-out').addEventListener('click', () => OrganigramaSGO.zoomOut());
+  document.getElementById('og-zoom-fit').addEventListener('click', () => OrganigramaSGO.ajustarVista());
+
+  cargarTeorico();
+</script>
+{% endblock %}
