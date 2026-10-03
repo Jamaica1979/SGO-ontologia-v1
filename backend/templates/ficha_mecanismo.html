@@ -5,8 +5,21 @@
   <div class="persona-head">
     <div class="avatar">{{ mecanismo.codigo[-2:] }}</div>
     <div>
-      <h2>{{ mecanismo.codigo }} — {{ mecanismo.nombre }}</h2>
+      <h2>{{ mecanismo.codigo }} — {{ mecanismo.nombre }}{% if not mecanismo.vigente %} <span class="tag off">BAJA</span>{% endif %}</h2>
       <p class="sub">{{ mecanismo.grupo }} · {{ mecanismo.frecuencia or "" }}</p>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <a href="/ui/mecanismos/{{ mecanismo.codigo }}/editar" class="btn">Editar</a>
+      {% if mecanismo.vigente %}
+      <form method="post" action="/ui/mecanismos/{{ mecanismo.codigo }}/baja"
+            onsubmit="return confirm('¿Dar de baja el mecanismo {{ mecanismo.codigo }}? Queda registrado en el Historial y se puede reactivar después.');">
+        <button type="submit" class="danger">Dar de baja</button>
+      </form>
+      {% else %}
+      <form method="post" action="/ui/mecanismos/{{ mecanismo.codigo }}/alta">
+        <button type="submit" class="primary">Dar de alta</button>
+      </form>
+      {% endif %}
     </div>
   </div>
   {% if mecanismo.descripcion %}<p style="margin-top:14px">{{ mecanismo.descripcion }}</p>{% endif %}
@@ -17,6 +30,9 @@
     {% set pcs = puestos_por_rol.get(rol, []) %}
     {% if pcs %}<p style="font-size:13px"><b>{{ label }}:</b> {% for pc in pcs %}<a href="/ui/puestos/{{ pc }}">{{ pc }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
   {% endfor %}
+
+  <h3>Formularios</h3>
+  {% for f in formularios %}<a href="/ui/formularios/{{ f.codigo }}" class="tag ok" style="margin:3px;text-decoration:none">{{ f.codigo }} — {{ f.nombre }}</a>{% else %}<p class="empty">Sin formularios vinculados.</p>{% endfor %}
 
   <h3>Cumplimiento — {{ periodo }}</h3>
   <div id="cumplimiento-wrap">{% include "_mecanismo_cumplimiento.html" %}</div>

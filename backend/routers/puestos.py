@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db, to_dict
+from database import get_db, to_dict, log_historial
 from auth import verificar_acceso
 import models as m
 
@@ -27,11 +27,15 @@ def obtener(codigo: str, db: Session = Depends(get_db)):
 
 @router.post("")
 def crear(body: dict, db: Session = Depends(get_db)):
+    if db.query(m.Puesto).filter(m.Puesto.codigo == body["codigo"]).first():
+        raise HTTPException(409, "Ya existe un puesto con ese código")
     p = m.Puesto(codigo=body["codigo"], nombre=body["nombre"], area=body["area"], nivel=body["nivel"],
                  cardinalidad_esperada=body.get("cardinalidad_esperada", "unica_en_la_empresa"),
                  proposito=body.get("proposito"), limites_autoridad=body.get("limites_autoridad"),
                  convenio_id=body.get("convenio_id"))
     db.add(p)
+    db.flush()
+    log_historial(db, "puestos", p.id, "CrearPuesto", despues=to_dict(p))
     db.commit()
     return to_dict(p)
 
@@ -41,9 +45,11 @@ def actualizar(codigo: str, body: dict, db: Session = Depends(get_db)):
     p = db.query(m.Puesto).filter(m.Puesto.codigo == codigo).first()
     if not p:
         raise HTTPException(404, "Puesto no encontrado")
+    antes = to_dict(p)
     for campo in ("nombre", "area", "nivel", "cardinalidad_esperada", "proposito", "limites_autoridad", "convenio_id", "vigente"):
         if campo in body:
             setattr(p, campo, body[campo])
+    log_historial(db, "puestos", p.id, "EditarPuesto", antes=antes, despues=to_dict(p))
     db.commit()
     return to_dict(p)
 

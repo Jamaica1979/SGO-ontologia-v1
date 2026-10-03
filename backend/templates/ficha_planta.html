@@ -7,7 +7,20 @@
       <h2>{{ planta.nombre }}</h2>
       <p class="sub">{{ planta.notas or "" }}</p>
     </div>
-    <span class="tag {% if planta.estado in ('activa','piloto') %}ok{% else %}warn{% endif %}" style="margin-left:auto">{{ planta.estado }}</span>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+      <span class="tag {% if planta.estado in ('activa','piloto') %}ok{% elif planta.estado == 'inactiva' %}off{% else %}warn{% endif %}">{{ planta.estado }}</span>
+      <a href="/ui/plantas/{{ planta.id }}/editar" class="btn">Editar</a>
+      {% if planta.estado != 'inactiva' %}
+      <form method="post" action="/ui/plantas/{{ planta.id }}/baja"
+            onsubmit="return confirm('¿Dar de baja la planta {{ planta.nombre }}? Queda registrada en el Historial y se puede reactivar después.');">
+        <button type="submit" class="danger">Dar de baja</button>
+      </form>
+      {% else %}
+      <form method="post" action="/ui/plantas/{{ planta.id }}/alta">
+        <button type="submit" class="primary">Dar de alta</button>
+      </form>
+      {% endif %}
+    </div>
   </div>
 
   <h3>Cobertura general</h3>

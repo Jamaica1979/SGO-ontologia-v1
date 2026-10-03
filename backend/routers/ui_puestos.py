@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, RedirectResponse
 from sqlalchemy.orm import Session
 from pathlib import Path
 from datetime import date
@@ -12,6 +12,36 @@ import models as m
 
 router = APIRouter(prefix="/ui/puestos", dependencies=[Depends(verificar_acceso)])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+
+
+def _form_ctx(db, puesto=None, error=None, valores=None):
+    return {"puesto": puesto, "error": error, "valores": valores,
+            "convenios": db.query(m.ConvenioColectivo).order_by(m.ConvenioColectivo.codigo).all()}
+
+
+# el orden importa: '/nuevo' tiene que registrarse antes que '/{codigo}'
+@router.get("/nuevo", response_class=HTMLResponse)
+def nuevo_puesto_form(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(request, "form_puesto.html", _form_ctx(db))
+
+
+@router.post("", response_class=HTMLResponse)
+def crear_puesto(request: Request, db: Session = Depends(get_db),
+                  codigo: str = Form(...), nombre: str = Form(...), area: str = Form(...), nivel: str = Form(...),
+                  cardinalidad_esperada: str = Form("unica_en_la_empresa"), proposito: str = Form(None),
+                  limites_autoridad: str = Form(None), convenio_id: str = Form(None)):
+    if db.query(m.Puesto).filter(m.Puesto.codigo == codigo).first():
+        return templates.TemplateResponse(request, "form_puesto.html", _form_ctx(db, error=f"Ya existe un puesto con el código {codigo}.",
+            valores={"codigo": codigo, "nombre": nombre, "area": area, "nivel": nivel,
+                     "cardinalidad_esperada": cardinalidad_esperada, "proposito": proposito,
+                     "limites_autoridad": limites_autoridad, "convenio_id": convenio_id}))
+    p = m.Puesto(codigo=codigo, nombre=nombre, area=area, nivel=nivel, cardinalidad_esperada=cardinalidad_esperada,
+                 proposito=proposito, limites_autoridad=limites_autoridad, convenio_id=convenio_id or None)
+    db.add(p)
+    db.flush()
+    log_historial(db, "puestos", p.id, "CrearPuesto", despues=to_dict(p))
+    db.commit()
+    return RedirectResponse(f"/ui/puestos/{codigo}", status_code=303)
 
 
 def _ctx(db: Session, codigo: str):
@@ -38,6 +68,47 @@ def _ctx(db: Session, codigo: str):
 @router.get("/{codigo}", response_class=HTMLResponse)
 def ver_ficha(codigo: str, request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "ficha_puesto.html", _ctx(db, codigo))
+
+
+@router.get("/{codigo}/editar", response_class=HTMLResponse)
+def editar_puesto_form(codigo: str, request: Request, db: Session = Depends(get_db)):
+    p = db.query(m.Puesto).filter(m.Puesto.codigo == codigo).first()
+    return templates.TemplateResponse(request, "form_puesto.html", _form_ctx(db, puesto=p))
+
+
+@router.post("/{codigo}/editar", response_class=HTMLResponse)
+def editar_puesto(codigo: str, request: Request, db: Session = Depends(get_db),
+                   nombre: str = Form(...), area: str = Form(...), nivel: str = Form(...),
+                   cardinalidad_esperada: str = Form("unica_en_la_empresa"), proposito: str = Form(None),
+                   limites_autoridad: str = Form(None), convenio_id: str = Form(None)):
+    p = db.query(m.Puesto).filter(m.Puesto.codigo == codigo).first()
+    antes = to_dict(p)
+    p.nombre, p.area, p.nivel = nombre, area, nivel
+    p.cardinalidad_esperada, p.proposito, p.limites_autoridad = cardinalidad_esperada, proposito, limites_autoridad
+    p.convenio_id = convenio_id or None
+    log_historial(db, "puestos", p.id, "EditarPuesto", antes=antes, despues=to_dict(p))
+    db.commit()
+    return RedirectResponse(f"/ui/puestos/{codigo}", status_code=303)
+
+
+@router.post("/{codigo}/baja")
+def dar_de_baja(codigo: str, db: Session = Depends(get_db)):
+    p = db.query(m.Puesto).filter(m.Puesto.codigo == codigo).first()
+    antes = to_dict(p)
+    p.vigente = 0
+    log_historial(db, "puestos", p.id, "DarDeBajaPuesto", antes=antes, despues=to_dict(p))
+    db.commit()
+    return RedirectResponse(f"/ui/puestos/{codigo}", status_code=303)
+
+
+@router.post("/{codigo}/alta")
+def dar_de_alta(codigo: str, db: Session = Depends(get_db)):
+    p = db.query(m.Puesto).filter(m.Puesto.codigo == codigo).first()
+    antes = to_dict(p)
+    p.vigente = 1
+    log_historial(db, "puestos", p.id, "DarDeAltaPuesto", antes=antes, despues=to_dict(p))
+    db.commit()
+    return RedirectResponse(f"/ui/puestos/{codigo}", status_code=303)
 
 
 @router.get("/{codigo}/pdf")

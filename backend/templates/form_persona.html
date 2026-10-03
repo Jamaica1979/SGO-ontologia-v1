@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar " + persona.nombre + " " + persona.apellido if persona else "Nueva persona" }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ "Editar " + persona.nombre + " " + persona.apellido if persona else "Nueva persona" }}</h2>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% set v = valores or persona %}
+  <form class="inline" method="post"
+        action="{{ '/ui/personas/' + persona.id|string + '/editar' if persona else '/ui/personas' }}">
+    <label>Nombre</label>
+    <input type="text" name="nombre" required value="{{ v.nombre if v else '' }}">
+    <label>Apellido</label>
+    <input type="text" name="apellido" required value="{{ v.apellido if v else '' }}">
+    <label>Legajo</label>
+    <input type="text" name="legajo" value="{{ v.legajo if v else '' }}">
+    <label>CUIT</label>
+    <input type="text" name="cuit" value="{{ v.cuit if v else '' }}">
+    <label>Estado del legajo</label>
+    <select name="estado_legajo">
+      {% for opt in ["completo", "incompleto", "sin_legajo"] %}
+      <option value="{{ opt }}" {% if (v.estado_legajo if v else 'completo') == opt %}selected{% endif %}>{{ opt }}</option>
+      {% endfor %}
+    </select>
+    <label>Antigüedad (años)</label>
+    <input type="number" step="0.5" name="antiguedad_anos" value="{{ v.antiguedad_anos if v and v.antiguedad_anos is not none else '' }}">
+    <label>Convenio colectivo</label>
+    <select name="convenio_id">
+      <option value="">— Sin convenio —</option>
+      {% for c in convenios %}
+      <option value="{{ c.id }}" {% if v and v.convenio_id and (v.convenio_id|string) == (c.id|string) %}selected{% endif %}>{{ c.codigo }} — {{ c.nombre }}</option>
+      {% endfor %}
+    </select>
+    <label>Notas</label>
+    <textarea name="notas">{{ v.notas if v else '' }}</textarea>
+    <div class="actions">
+      <button type="submit" class="primary">Guardar</button>
+      <a href="{{ '/ui/personas/' + persona.id|string if persona else '/ui/listado/personas' }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

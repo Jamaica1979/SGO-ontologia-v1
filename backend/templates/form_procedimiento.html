@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar " + procedimiento.codigo if procedimiento else "Nuevo procedimiento" }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ "Editar " + procedimiento.codigo if procedimiento else "Nuevo procedimiento" }}</h2>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% set v = valores or procedimiento %}
+  <form class="inline" method="post"
+        action="{{ '/ui/procedimientos/' + procedimiento.codigo + '/editar' if procedimiento else '/ui/procedimientos' }}">
+    {% if not procedimiento %}
+    <label>Código (ej. P-18)</label>
+    <input type="text" name="codigo" required value="{{ v.codigo if v else '' }}">
+    {% endif %}
+    <label>Nombre</label>
+    <input type="text" name="nombre" required value="{{ v.nombre if v else '' }}">
+    <label>Área</label>
+    <input type="text" name="area" required value="{{ v.area if v else '' }}">
+    <label>Nivel de riesgo</label>
+    <select name="nivel_riesgo">
+      {% for opt in ["bajo", "medio", "alto"] %}
+      <option value="{{ opt }}" {% if (v.nivel_riesgo if v else 'medio') == opt %}selected{% endif %}>{{ opt }}</option>
+      {% endfor %}
+    </select>
+    <label>Descripción general (propósito y alcance)</label>
+    <textarea name="descripcion">{{ v.descripcion if v else '' }}</textarea>
+    <label class="check-inline"><input type="checkbox" name="tiene_nivel_urgente" value="true" {% if (v.tiene_nivel_urgente if v else true) %}checked{% endif %}> Tiene nivel urgente</label>
+    <label class="check-inline"><input type="checkbox" name="tiene_nivel_emergencia" value="true" {% if (v.tiene_nivel_emergencia if v else true) %}checked{% endif %}> Tiene nivel emergencia</label>
+    <div class="actions">
+      <button type="submit" class="primary">Guardar</button>
+      <a href="{{ '/ui/procedimientos/' + procedimiento.codigo if procedimiento else '/ui/listado/procedimientos' }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

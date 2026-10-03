@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from database import get_db, to_dict
+from database import get_db, to_dict, log_historial
 from auth import verificar_acceso
 import models as m
 
@@ -31,6 +31,8 @@ def crear(body: dict, db: Session = Depends(get_db)):
                   estado_legajo=body.get("estado_legajo", "completo" if body.get("legajo") else "sin_legajo"),
                   notas=body.get("notas"))
     db.add(p)
+    db.flush()
+    log_historial(db, "personas", p.id, "CrearPersona", despues=to_dict(p))
     db.commit()
     return to_dict(p)
 
@@ -40,8 +42,10 @@ def actualizar(persona_id: int, body: dict, db: Session = Depends(get_db)):
     p = db.query(m.Persona).get(persona_id)
     if not p:
         raise HTTPException(404, "Persona no encontrada")
+    antes = to_dict(p)
     for campo in ("nombre", "apellido", "legajo", "cuit", "convenio_id", "antiguedad_anos", "estado_legajo", "notas", "activo"):
         if campo in body:
             setattr(p, campo, body[campo])
+    log_historial(db, "personas", p.id, "EditarPersona", antes=antes, despues=to_dict(p))
     db.commit()
     return to_dict(p)

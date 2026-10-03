@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from pathlib import Path
-from database import get_db, log_historial
+from database import get_db, log_historial, to_dict
 from auth import verificar_acceso
 from functions import calcular_cobertura
-from routers.asignaciones import actividades_de_asignacion, es_sede_unica, conflictos_exclusividad
+from routers.asignaciones import actividades_de_asignacion, es_sede_unica, conflictos_exclusividad, get_or_create_perfil_personal
 import models as m
 
 router = APIRouter(prefix="/ui", dependencies=[Depends(verificar_acceso)])
@@ -54,10 +54,78 @@ def _ficha_persona_ctx(db: Session, persona_id: int):
     }
 
 
+def _form_persona_ctx(db, persona=None, error=None, valores=None):
+    return {"persona": persona, "error": error, "valores": valores,
+            "convenios": db.query(m.ConvenioColectivo).order_by(m.ConvenioColectivo.codigo).all()}
+
+
+# el orden importa: '/personas/nuevo' tiene que registrarse antes que '/personas/{persona_id}'
+@router.get("/personas/nuevo", response_class=HTMLResponse)
+def nueva_persona_form(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(request, "form_persona.html", _form_persona_ctx(db))
+
+
+@router.post("/personas", response_class=HTMLResponse)
+def crear_persona(request: Request, db: Session = Depends(get_db),
+                   nombre: str = Form(...), apellido: str = Form(...), legajo: str = Form(None),
+                   cuit: str = Form(None), convenio_id: str = Form(None), antiguedad_anos: str = Form(None),
+                   estado_legajo: str = Form("completo"), notas: str = Form(None)):
+    p = m.Persona(nombre=nombre, apellido=apellido, legajo=legajo or None, cuit=cuit or None,
+                  convenio_id=convenio_id or None, antiguedad_anos=float(antiguedad_anos) if antiguedad_anos else None,
+                  estado_legajo=estado_legajo, notas=notas)
+    db.add(p)
+    db.flush()
+    log_historial(db, "personas", p.id, "CrearPersona", despues=to_dict(p))
+    db.commit()
+    return RedirectResponse(f"/ui/personas/{p.id}", status_code=303)
+
+
 @router.get("/personas/{persona_id}", response_class=HTMLResponse)
 def ver_ficha(persona_id: int, request: Request, db: Session = Depends(get_db)):
     ctx = _ficha_persona_ctx(db, persona_id)
     return templates.TemplateResponse(request, "ficha_persona.html", ctx)
+
+
+@router.get("/personas/{persona_id}/editar", response_class=HTMLResponse)
+def editar_persona_form(persona_id: int, request: Request, db: Session = Depends(get_db)):
+    p = db.query(m.Persona).get(persona_id)
+    return templates.TemplateResponse(request, "form_persona.html", _form_persona_ctx(db, persona=p))
+
+
+@router.post("/personas/{persona_id}/editar", response_class=HTMLResponse)
+def editar_persona(persona_id: int, request: Request, db: Session = Depends(get_db),
+                    nombre: str = Form(...), apellido: str = Form(...), legajo: str = Form(None),
+                    cuit: str = Form(None), convenio_id: str = Form(None), antiguedad_anos: str = Form(None),
+                    estado_legajo: str = Form("completo"), notas: str = Form(None)):
+    p = db.query(m.Persona).get(persona_id)
+    antes = to_dict(p)
+    p.nombre, p.apellido, p.legajo, p.cuit = nombre, apellido, legajo or None, cuit or None
+    p.convenio_id = convenio_id or None
+    p.antiguedad_anos = float(antiguedad_anos) if antiguedad_anos else None
+    p.estado_legajo, p.notas = estado_legajo, notas
+    log_historial(db, "personas", p.id, "EditarPersona", antes=antes, despues=to_dict(p))
+    db.commit()
+    return RedirectResponse(f"/ui/personas/{persona_id}", status_code=303)
+
+
+@router.post("/personas/{persona_id}/baja")
+def dar_de_baja_persona(persona_id: int, db: Session = Depends(get_db)):
+    p = db.query(m.Persona).get(persona_id)
+    antes = to_dict(p)
+    p.activo = 0
+    log_historial(db, "personas", p.id, "DarDeBajaPersona", antes=antes, despues=to_dict(p))
+    db.commit()
+    return RedirectResponse(f"/ui/personas/{persona_id}", status_code=303)
+
+
+@router.post("/personas/{persona_id}/alta")
+def dar_de_alta_persona(persona_id: int, db: Session = Depends(get_db)):
+    p = db.query(m.Persona).get(persona_id)
+    antes = to_dict(p)
+    p.activo = 1
+    log_historial(db, "personas", p.id, "DarDeAltaPersona", antes=antes, despues=to_dict(p))
+    db.commit()
+    return RedirectResponse(f"/ui/personas/{persona_id}", status_code=303)
 
 
 @router.get("/buscar", response_class=HTMLResponse)
@@ -74,6 +142,8 @@ def buscar(q: str, request: Request, db: Session = Depends(get_db)):
         resultados.append({"principal": f"{me.codigo} — {me.nombre}", "sub": "Mecanismo", "href": f"/ui/mecanismos/{me.codigo}"})
     for pl in db.query(m.Planta).filter(m.Planta.nombre.ilike(ql)):
         resultados.append({"principal": pl.nombre, "sub": "Planta", "href": f"/ui/plantas/{pl.id}"})
+    for f in db.query(m.Formulario).filter((m.Formulario.codigo.ilike(ql)) | (m.Formulario.nombre.ilike(ql))):
+        resultados.append({"principal": f"{f.codigo} — {f.nombre}", "sub": "Formulario", "href": f"/ui/formularios/{f.codigo}"})
     return templates.TemplateResponse(request, "buscar.html", {"q": q, "resultados": resultados})
 
 
@@ -106,6 +176,69 @@ def nueva_asignacion(persona_id: int, request: Request, db: Session = Depends(ge
     log_historial(db, "asignaciones", nueva.id, "AsignarPersonaAPuesto",
                   despues={"puesto_codigo": puesto_codigo, "planta_id": planta_id, "etapa": etapa, "persona_id": persona_id})
     db.commit()
+    ctx = _ficha_persona_ctx(db, persona_id)
+    return templates.TemplateResponse(request, "_asignacion_creada.html", ctx)
+
+
+@router.get("/personas/{persona_id}/actividades-de-puesto", response_class=HTMLResponse)
+def actividades_de_puesto_origen(persona_id: int, request: Request, puesto_codigo: str = "", db: Session = Depends(get_db)):
+    """Alimenta el checklist de actividades cuando se elige el puesto de origen
+    en el modo 'Actividades sueltas' — Opción B / AsignarActividadSuelta."""
+    actividades = []
+    requiere_etapa = False
+    if puesto_codigo:
+        actividades = db.query(m.Actividad).filter(m.Actividad.puesto_codigo == puesto_codigo,
+                                                     m.Actividad.activo == 1).order_by(m.Actividad.codigo).all()
+        requiere_etapa = puesto_codigo in ("PRD-04", "PRD-05")
+    return templates.TemplateResponse(request, "_actividades_checkboxes.html", {
+        "actividades": actividades, "requiere_etapa": requiere_etapa, "puesto_codigo": puesto_codigo,
+    })
+
+
+@router.post("/personas/{persona_id}/actividades-sueltas/nueva", response_class=HTMLResponse)
+def nueva_actividad_suelta(persona_id: int, request: Request, db: Session = Depends(get_db),
+                            planta_id: int = Form(...), etapa: str = Form(None),
+                            actividad_ids: list[int] = Form(default=[]), permitir_conflicto: bool = Form(False)):
+    """Acción AsignarActividadSuelta (Opción B) desde la ficha de Persona — mismo
+    mecanismo que /api/asignaciones/asignar-actividades, pero con formulario HTML
+    y manejo de conflictos consistente con el resto de la ficha."""
+    etapa = etapa or None
+
+    if not actividad_ids:
+        ctx = _ficha_persona_ctx(db, persona_id)
+        ctx["error_sueltas"] = "Elegí al menos una actividad."
+        ctx["modo_default"] = "sueltas"
+        return templates.TemplateResponse(request, "_form_nueva_asignacion.html", ctx)
+
+    actividad_ids_set = set(actividad_ids)
+    scope_planta = None if es_sede_unica(db, actividad_ids=actividad_ids_set) else planta_id
+    conflictos = conflictos_exclusividad(db, scope_planta, actividad_ids_set, etapa=etapa, excluir_persona_id=persona_id)
+
+    if conflictos and not permitir_conflicto:
+        return templates.TemplateResponse(request, "_conflicto_sueltas.html", {
+            "persona_id": persona_id, "planta_id": planta_id, "etapa": etapa,
+            "actividad_ids": actividad_ids, "conflictos": conflictos,
+        })
+
+    perfil = get_or_create_perfil_personal(db, persona_id, etapa)
+    ya_asignada = db.query(m.Asignacion).filter(m.Asignacion.persona_id == persona_id,
+                                                 m.Asignacion.perfil_id == perfil.id,
+                                                 m.Asignacion.planta_id == planta_id,
+                                                 m.Asignacion.estado.in_(["activa", "transicion"])).first()
+    if not ya_asignada:
+        nueva = m.Asignacion(persona_id=persona_id, perfil_id=perfil.id, planta_id=planta_id,
+                              etapa=etapa, estado="activa")
+        db.add(nueva)
+        db.flush()
+        log_historial(db, "asignaciones", nueva.id, "AsignarActividadSuelta (nueva cobertura)",
+                      despues={"planta_id": planta_id, "etapa": etapa, "persona_id": persona_id})
+
+    existentes = set(r[0] for r in db.query(m.PerfilActividad.actividad_id).filter(m.PerfilActividad.perfil_id == perfil.id))
+    for aid in actividad_ids_set - existentes:
+        db.add(m.PerfilActividad(perfil_id=perfil.id, actividad_id=aid))
+    log_historial(db, "perfil_actividades", perfil.id, "AsignarActividadSuelta", despues={"actividad_ids": list(actividad_ids_set)})
+    db.commit()
+
     ctx = _ficha_persona_ctx(db, persona_id)
     return templates.TemplateResponse(request, "_asignacion_creada.html", ctx)
 

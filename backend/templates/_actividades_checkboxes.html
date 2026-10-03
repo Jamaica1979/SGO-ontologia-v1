@@ -1,0 +1,15 @@
+{% if requiere_etapa %}
+<div>
+  <label>Etapa (este puesto tiene línea primaria y secundaria a la vez)</label>
+  <select name="etapa" required><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select>
+</div>
+{% endif %}
+{% if actividades %}
+<div class="checklist">
+  {% for a in actividades %}
+  <label class="check-row"><input type="checkbox" name="actividad_ids" value="{{ a.id }}"> {{ a.codigo }} — {{ a.descripcion }}</label>
+  {% endfor %}
+</div>
+{% elif puesto_codigo %}
+<p class="empty">Ese puesto no tiene actividades cargadas.</p>
+{% endif %}

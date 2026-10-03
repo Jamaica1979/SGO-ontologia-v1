@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar " + planta.nombre if planta else "Nueva planta" }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ "Editar " + planta.nombre if planta else "Nueva planta" }}</h2>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% set v = valores or planta %}
+  <form class="inline" method="post"
+        action="{{ '/ui/plantas/' + planta.id|string + '/editar' if planta else '/ui/plantas' }}">
+    <label>Código</label>
+    <input type="text" name="codigo" required value="{{ v.codigo if v else '' }}">
+    <label>Nombre</label>
+    <input type="text" name="nombre" required value="{{ v.nombre if v else '' }}">
+    <label>Estado</label>
+    <select name="estado">
+      {% for opt in ["activa", "piloto", "pendiente", "inactiva"] %}
+      <option value="{{ opt }}" {% if (v.estado if v else 'pendiente') == opt %}selected{% endif %}>{{ opt }}</option>
+      {% endfor %}
+    </select>
+    <label>Notas</label>
+    <textarea name="notas">{{ v.notas if v else '' }}</textarea>
+    <div class="actions">
+      <button type="submit" class="primary">Guardar</button>
+      <a href="{{ '/ui/plantas/' + planta.id|string if planta else '/ui/listado/plantas' }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

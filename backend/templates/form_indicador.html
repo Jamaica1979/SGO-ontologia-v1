@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar " + indicador.codigo if indicador else "Nuevo indicador" }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ "Editar " + indicador.codigo if indicador else "Nuevo indicador" }}</h2>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% set v = valores or indicador %}
+  <form class="inline" method="post"
+        action="{{ '/ui/indicadores/' + indicador.codigo + '/editar' if indicador else '/ui/indicadores' }}">
+    {% if not indicador %}
+    <label>Código (ej. KPI-29)</label>
+    <input type="text" name="codigo" required value="{{ v.codigo if v else '' }}">
+    {% endif %}
+    <label>Nombre</label>
+    <input type="text" name="nombre" required value="{{ v.nombre if v else '' }}">
+    <label>Área</label>
+    <input type="text" name="area" required value="{{ v.area if v else '' }}">
+    <label>Fórmula</label>
+    <textarea name="formula">{{ v.formula if v else '' }}</textarea>
+    <label>Frecuencia</label>
+    <input type="text" name="frecuencia" value="{{ v.frecuencia if v else '' }}">
+    <label>Fuente del dato</label>
+    <input type="text" name="fuente_dato" value="{{ v.fuente_dato if v else '' }}">
+    <label>Responsable de carga</label>
+    <select name="responsable_carga_puesto_codigo">
+      <option value="">— Sin definir —</option>
+      {% for p in puestos %}
+      <option value="{{ p.codigo }}" {% if v and (v.responsable_carga_puesto_codigo|string) == (p.codigo|string) %}selected{% endif %}>{{ p.codigo }} — {{ p.nombre }}</option>
+      {% endfor %}
+    </select>
+    <label>Responsable de uso</label>
+    <select name="responsable_uso_puesto_codigo">
+      <option value="">— Sin definir —</option>
+      {% for p in puestos %}
+      <option value="{{ p.codigo }}" {% if v and (v.responsable_uso_puesto_codigo|string) == (p.codigo|string) %}selected{% endif %}>{{ p.codigo }} — {{ p.nombre }}</option>
+      {% endfor %}
+    </select>
+    <label>Umbral verde</label>
+    <input type="text" name="umbral_verde" value="{{ v.umbral_verde if v else '' }}">
+    <label>Umbral amarillo</label>
+    <input type="text" name="umbral_amarillo" value="{{ v.umbral_amarillo if v else '' }}">
+    <label>Umbral rojo</label>
+    <input type="text" name="umbral_rojo" value="{{ v.umbral_rojo if v else '' }}">
+    <div class="actions">
+      <button type="submit" class="primary">Guardar</button>
+      <a href="{{ '/ui/indicadores/' + indicador.codigo if indicador else '/ui/listado/indicadores' }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -5,18 +5,34 @@
   <div class="persona-head">
     <div class="avatar">{{ procedimiento.codigo[-2:] }}</div>
     <div>
-      <h2>{{ procedimiento.codigo }} — {{ procedimiento.nombre }}</h2>
+      <h2>{{ procedimiento.codigo }} — {{ procedimiento.nombre }}{% if not procedimiento.vigente %} <span class="tag off">BAJA</span>{% endif %}</h2>
       <p class="sub">{{ procedimiento.area }} · Riesgo {{ procedimiento.nivel_riesgo }}</p>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <a href="/ui/procedimientos/{{ procedimiento.codigo }}/editar" class="btn">Editar</a>
+      {% if procedimiento.vigente %}
+      <form method="post" action="/ui/procedimientos/{{ procedimiento.codigo }}/baja"
+            onsubmit="return confirm('¿Dar de baja el procedimiento {{ procedimiento.codigo }}? Queda registrado en el Historial y se puede reactivar después.');">
+        <button type="submit" class="danger">Dar de baja</button>
+      </form>
+      {% else %}
+      <form method="post" action="/ui/procedimientos/{{ procedimiento.codigo }}/alta">
+        <button type="submit" class="primary">Dar de alta</button>
+      </form>
+      {% endif %}
     </div>
   </div>
   {% if procedimiento.descripcion %}
-    <p style="margin-top:14px">{{ procedimiento.descripcion }}</p>
+    <p style="margin-top:14px;white-space:pre-line">{{ procedimiento.descripcion }}</p>
   {% else %}
     <p class="empty" style="margin-top:14px">Sin descripción general cargada todavía (pendiente de la Parte V del manual).</p>
   {% endif %}
 
   <h3>Puestos que ejecutan este procedimiento</h3>
   {% for pp in puestos %}<a href="/ui/puestos/{{ pp }}" class="tag ok" style="margin:3px;text-decoration:none">{{ pp }}</a>{% else %}<p class="empty">Sin puestos vinculados.</p>{% endfor %}
+
+  <h3>Formularios</h3>
+  {% for f in formularios %}<a href="/ui/formularios/{{ f.codigo }}" class="tag ok" style="margin:3px;text-decoration:none">{{ f.codigo }} — {{ f.nombre }}</a>{% else %}<p class="empty">Sin formularios vinculados.</p>{% endfor %}
 
   <h3>Pasos — {{ pasos|length }}</h3>
   {% for p in pasos %}

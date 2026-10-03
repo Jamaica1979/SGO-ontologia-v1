@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar " + mecanismo.codigo if mecanismo else "Nuevo mecanismo" }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ "Editar " + mecanismo.codigo if mecanismo else "Nuevo mecanismo" }}</h2>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% set v = valores or mecanismo %}
+  <form class="inline" method="post"
+        action="{{ '/ui/mecanismos/' + mecanismo.codigo + '/editar' if mecanismo else '/ui/mecanismos' }}">
+    {% if not mecanismo %}
+    <label>Código (ej. MC-24)</label>
+    <input type="text" name="codigo" required value="{{ v.codigo if v else '' }}">
+    {% endif %}
+    <label>Nombre</label>
+    <input type="text" name="nombre" required value="{{ v.nombre if v else '' }}">
+    <label>Grupo</label>
+    <select name="grupo">
+      {% for opt in ["diario", "semanal", "mensual", "evento", "emergencia"] %}
+      <option value="{{ opt }}" {% if (v.grupo if v else '') == opt %}selected{% endif %}>{{ opt }}</option>
+      {% endfor %}
+    </select>
+    <label>Frecuencia</label>
+    <input type="text" name="frecuencia" value="{{ v.frecuencia if v else '' }}">
+    <label>Descripción</label>
+    <textarea name="descripcion">{{ v.descripcion if v else '' }}</textarea>
+    <label>Documento de referencia</label>
+    <input type="text" name="documento" value="{{ v.documento if v else '' }}">
+    <label>Emite (referencia libre)</label>
+    <input type="text" name="emite" value="{{ v.emite if v else '' }}">
+    <label>Recibe (referencia libre)</label>
+    <input type="text" name="recibe" value="{{ v.recibe if v else '' }}">
+    <div class="actions">
+      <button type="submit" class="primary">Guardar</button>
+      <a href="{{ '/ui/mecanismos/' + mecanismo.codigo if mecanismo else '/ui/listado/mecanismos' }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

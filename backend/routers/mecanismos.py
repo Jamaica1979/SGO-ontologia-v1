@@ -8,6 +8,35 @@ import models as m
 router = APIRouter(prefix="/api/mecanismos", tags=["Mecanismo"], dependencies=[Depends(verificar_acceso)])
 
 
+@router.post("")
+def crear(body: dict, db: Session = Depends(get_db)):
+    if db.query(m.Mecanismo).filter(m.Mecanismo.codigo == body["codigo"]).first():
+        raise HTTPException(409, "Ya existe un mecanismo con ese código")
+    mec = m.Mecanismo(codigo=body["codigo"], nombre=body["nombre"], grupo=body["grupo"],
+                       frecuencia=body.get("frecuencia"), descripcion=body.get("descripcion"),
+                       documento=body.get("documento"), emite=body.get("emite"), recibe=body.get("recibe"),
+                       estado_relevado=body.get("estado_relevado"))
+    db.add(mec)
+    db.flush()
+    log_historial(db, "mecanismos", mec.id, "CrearMecanismo", despues=to_dict(mec))
+    db.commit()
+    return to_dict(mec)
+
+
+@router.put("/{codigo}")
+def actualizar(codigo: str, body: dict, db: Session = Depends(get_db)):
+    mec = db.query(m.Mecanismo).filter(m.Mecanismo.codigo == codigo).first()
+    if not mec:
+        raise HTTPException(404, "Mecanismo no encontrado")
+    antes = to_dict(mec)
+    for campo in ("nombre", "grupo", "frecuencia", "descripcion", "documento", "emite", "recibe", "estado_relevado", "vigente"):
+        if campo in body:
+            setattr(mec, campo, body[campo])
+    log_historial(db, "mecanismos", mec.id, "EditarMecanismo", antes=antes, despues=to_dict(mec))
+    db.commit()
+    return to_dict(mec)
+
+
 def _periodo_actual():
     return date.today().strftime("%Y-%m")
 

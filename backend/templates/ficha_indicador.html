@@ -5,8 +5,21 @@
   <div class="persona-head">
     <div class="avatar">{{ indicador.codigo[-2:] }}</div>
     <div>
-      <h2>{{ indicador.codigo }} — {{ indicador.nombre }}</h2>
+      <h2>{{ indicador.codigo }} — {{ indicador.nombre }}{% if not indicador.activo %} <span class="tag off">BAJA</span>{% endif %}</h2>
       <p class="sub">{{ indicador.area }} · {{ indicador.frecuencia or "" }}</p>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <a href="/ui/indicadores/{{ indicador.codigo }}/editar" class="btn">Editar</a>
+      {% if indicador.activo %}
+      <form method="post" action="/ui/indicadores/{{ indicador.codigo }}/baja"
+            onsubmit="return confirm('¿Dar de baja el indicador {{ indicador.codigo }}? Queda registrado en el Historial y se puede reactivar después.');">
+        <button type="submit" class="danger">Dar de baja</button>
+      </form>
+      {% else %}
+      <form method="post" action="/ui/indicadores/{{ indicador.codigo }}/alta">
+        <button type="submit" class="primary">Dar de alta</button>
+      </form>
+      {% endif %}
     </div>
   </div>
   {% if indicador.formula %}<p style="margin-top:14px"><b>Fórmula:</b> {{ indicador.formula }}</p>{% endif %}

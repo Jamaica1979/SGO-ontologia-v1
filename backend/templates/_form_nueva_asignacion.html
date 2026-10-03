@@ -1,16 +1,52 @@
-<form class="inline" hx-post="/ui/personas/{{ persona.id }}/asignaciones/nueva" hx-target="#nueva-asignacion" hx-swap="innerHTML">
-  <label>Puesto</label>
-  <select name="puesto_codigo" required onchange="document.getElementById('etapa-wrap').style.display = (this.value==='PRD-04'||this.value==='PRD-05') ? 'block':'none'">
-    <option value="">-- elegir puesto --</option>
-    {% for p in puestos %}<option value="{{ p.codigo }}">{{ p.codigo }} — {{ p.nombre }}</option>{% endfor %}
-  </select>
-  <div id="etapa-wrap" style="display:none">
-    <label>Etapa (Trituración y Carga y Acarreo tienen línea primaria y secundaria a la vez)</label>
-    <select name="etapa"><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select>
-  </div>
-  <label>Planta</label>
-  <select name="planta_id" required>
-    {% for pl in plantas %}<option value="{{ pl.id }}">{{ pl.nombre }} ({{ pl.estado }})</option>{% endfor %}
-  </select>
-  <div class="actions"><button type="submit" class="primary">Asignar</button></div>
-</form>
+<div class="modo-toggle">
+  <label>
+    <input type="radio" name="modo_cobertura" value="puesto" {% if modo_default|default('puesto') == 'puesto' %}checked{% endif %}
+           onchange="document.getElementById('modo-puesto').style.display='block'; document.getElementById('modo-sueltas').style.display='none';">
+    Puesto completo
+  </label>
+  <label>
+    <input type="radio" name="modo_cobertura" value="sueltas" {% if modo_default|default('puesto') == 'sueltas' %}checked{% endif %}
+           onchange="document.getElementById('modo-puesto').style.display='none'; document.getElementById('modo-sueltas').style.display='block';">
+    Actividades sueltas de otro puesto
+  </label>
+</div>
+
+<div id="modo-puesto" style="display:{{ 'none' if modo_default|default('puesto') == 'sueltas' else 'block' }}">
+  <form class="inline" hx-post="/ui/personas/{{ persona.id }}/asignaciones/nueva" hx-target="#nueva-asignacion" hx-swap="innerHTML">
+    <label>Puesto</label>
+    <select name="puesto_codigo" required onchange="document.getElementById('etapa-wrap').style.display = (this.value==='PRD-04'||this.value==='PRD-05') ? 'block':'none'">
+      <option value="">-- elegir puesto --</option>
+      {% for p in puestos %}<option value="{{ p.codigo }}">{{ p.codigo }} — {{ p.nombre }}</option>{% endfor %}
+    </select>
+    <div id="etapa-wrap" style="display:none">
+      <label>Etapa (Trituración y Carga y Acarreo tienen línea primaria y secundaria a la vez)</label>
+      <select name="etapa"><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select>
+    </div>
+    <label>Planta</label>
+    <select name="planta_id" required>
+      {% for pl in plantas %}<option value="{{ pl.id }}">{{ pl.nombre }} ({{ pl.estado }})</option>{% endfor %}
+    </select>
+    <div class="actions"><button type="submit" class="primary">Asignar</button></div>
+  </form>
+</div>
+
+<div id="modo-sueltas" style="display:{{ 'block' if modo_default|default('puesto') == 'sueltas' else 'none' }}">
+  {% if error_sueltas %}<p class="error">{{ error_sueltas }}</p>{% endif %}
+  <form class="inline" hx-post="/ui/personas/{{ persona.id }}/actividades-sueltas/nueva" hx-target="#nueva-asignacion" hx-swap="innerHTML">
+    <label>Puesto de origen (de dónde vienen las actividades)</label>
+    <select name="puesto_codigo" required
+            hx-get="/ui/personas/{{ persona.id }}/actividades-de-puesto" hx-include="this"
+            hx-target="#actividades-checkbox-list" hx-swap="innerHTML" hx-trigger="change">
+      <option value="">-- elegir puesto --</option>
+      {% for p in puestos %}<option value="{{ p.codigo }}">{{ p.codigo }} — {{ p.nombre }}</option>{% endfor %}
+    </select>
+
+    <div id="actividades-checkbox-list"></div>
+
+    <label>Planta</label>
+    <select name="planta_id" required>
+      {% for pl in plantas %}<option value="{{ pl.id }}">{{ pl.nombre }} ({{ pl.estado }})</option>{% endfor %}
+    </select>
+    <div class="actions"><button type="submit" class="primary">Asignar actividades sueltas</button></div>
+  </form>
+</div>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar " + formulario.codigo if formulario else "Nuevo formulario" }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ "Editar " + formulario.codigo if formulario else "Nuevo formulario" }}</h2>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% set v = valores or formulario %}
+  <form class="inline" method="post"
+        action="{{ '/ui/formularios/' + formulario.codigo + '/editar' if formulario else '/ui/formularios' }}">
+    {% if not formulario %}
+    <label>Código (ej. F-12)</label>
+    <input type="text" name="codigo" required value="{{ v.codigo if v else '' }}">
+    {% endif %}
+    <label>Nombre del formulario</label>
+    <input type="text" name="nombre" required value="{{ v.nombre if v else '' }}">
+    <label>Origen (ej. Tango, Mixto, Físico/Planilla)</label>
+    <input type="text" name="origen" value="{{ v.origen if v else '' }}">
+    <label>Emisor</label>
+    <input type="text" name="emisor" value="{{ v.emisor if v else '' }}">
+    <label>Receptor</label>
+    <input type="text" name="receptor" value="{{ v.receptor if v else '' }}">
+    <label>Frecuencia</label>
+    <input type="text" name="frecuencia" value="{{ v.frecuencia if v else '' }}">
+    <div class="actions">
+      <button type="submit" class="primary">Guardar</button>
+      <a href="{{ '/ui/formularios/' + formulario.codigo if formulario else '/ui/listado/formularios' }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

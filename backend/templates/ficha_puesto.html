@@ -5,10 +5,23 @@
   <div class="persona-head">
     <div class="avatar">{{ puesto.codigo[:2] }}</div>
     <div>
-      <h2>{{ puesto.codigo }} — {{ puesto.nombre }}</h2>
+      <h2>{{ puesto.codigo }} — {{ puesto.nombre }}{% if not puesto.vigente %} <span class="tag off">BAJA</span>{% endif %}</h2>
       <p class="sub">{{ puesto.area }} · Nivel {{ puesto.nivel }}{% if convenio %} · {{ convenio.nombre }}{% endif %}</p>
     </div>
-    <a href="/ui/puestos/{{ puesto.codigo }}/pdf" target="_blank" class="btn" style="margin-left:auto">⬇ Exportar PDF</a>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <a href="/ui/puestos/{{ puesto.codigo }}/pdf" target="_blank" class="btn">⬇ Exportar PDF</a>
+      <a href="/ui/puestos/{{ puesto.codigo }}/editar" class="btn">Editar</a>
+      {% if puesto.vigente %}
+      <form method="post" action="/ui/puestos/{{ puesto.codigo }}/baja"
+            onsubmit="return confirm('¿Dar de baja el puesto {{ puesto.codigo }}? Queda registrado en el Historial y se puede reactivar después.');">
+        <button type="submit" class="danger">Dar de baja</button>
+      </form>
+      {% else %}
+      <form method="post" action="/ui/puestos/{{ puesto.codigo }}/alta">
+        <button type="submit" class="primary">Dar de alta</button>
+      </form>
+      {% endif %}
+    </div>
   </div>
   {% if puesto.proposito %}<p style="margin-top:14px">{{ puesto.proposito }}</p>{% endif %}
 

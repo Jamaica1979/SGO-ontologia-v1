@@ -135,6 +135,7 @@ class Procedimiento(Base):
     tiene_nivel_urgente = Column(Integer, server_default="1")
     tiene_nivel_emergencia = Column(Integer, server_default="1")
     formularios_asociados = Column(Text)  # JSON array
+    vigente = Column(Integer, server_default="1")  # Fase 3 — baja lógica, igual que Puesto/Mecanismo
     created_at = Column(Text, server_default=NOW)
 
 
@@ -207,6 +208,25 @@ class Mecanismo(Base):
     estado_relevado = Column(Text)
     vigente = Column(Integer, server_default="1")
     created_at = Column(Text, server_default=NOW)
+
+
+class Formulario(Base):
+    """Object Type agregado en Fase 2 (2/10/2026) — Entrega C del Manual de
+    Procedimientos (F-01 a F-11). Reemplaza el campo de texto suelto
+    procedimientos.formularios_asociados, que queda en desuso sin eliminarse
+    (evita un ALTER TABLE destructivo sobre SQLite sin necesidad real).
+    Es metadata simple sin historia encadenada — a diferencia del resto de
+    los objetos, admite borrado físico real (ver ui_formularios.py)."""
+    __tablename__ = "formularios"
+    id = Column(Integer, primary_key=True)
+    codigo = Column(Text, unique=True, nullable=False)  # F-01..F-11
+    nombre = Column(Text, nullable=False)
+    origen = Column(Text)      # Tango | Mixto | Físico/Planilla
+    emisor = Column(Text)
+    receptor = Column(Text)
+    frecuencia = Column(Text)
+    created_at = Column(Text, server_default=NOW)
+    updated_at = Column(Text, server_default=NOW)
 
 
 # ═══════════════════════ JUNCTION OBJECTS ═══════════════════════
@@ -324,6 +344,22 @@ class ProcedimientoPuesto(Base):
     procedimiento_id = Column(Integer, ForeignKey("procedimientos.id"), primary_key=True)
     puesto_codigo = Column(Text, ForeignKey("puestos.codigo"), primary_key=True)
     rol = Column(Text, server_default="ejecuta")  # ejecuta|aprueba|recibe
+
+
+class ProcedimientoFormulario(Base):
+    """Qué formularios genera o usa cada procedimiento (columna 'Documentos
+    generados' del manual) — Fase 2."""
+    __tablename__ = "procedimiento_formularios"
+    procedimiento_id = Column(Integer, ForeignKey("procedimientos.id"), primary_key=True)
+    formulario_id = Column(Integer, ForeignKey("formularios.id"), primary_key=True)
+
+
+class MecanismoFormulario(Base):
+    """Qué formulario es el soporte documental de cada mecanismo (columna
+    'Documento' de Mecanismos) — Fase 2."""
+    __tablename__ = "mecanismo_formularios"
+    mecanismo_id = Column(Integer, ForeignKey("mecanismos.id"), primary_key=True)
+    formulario_id = Column(Integer, ForeignKey("formularios.id"), primary_key=True)
 
 
 # ═══════════════════════ AUDITORÍA ═══════════════════════

@@ -2,12 +2,16 @@
 {% block title %}{{ titulo }}{% endblock %}
 {% block content %}
 <div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
     <h2>{{ titulo }} — {{ items|length }}</h2>
-    {% if extra_link %}<a href="{{ extra_link.href }}" target="_blank" class="btn">{{ extra_link.texto }}</a>{% endif %}
+    <div style="display:flex;gap:8px">
+      {% if toggle_link %}<a href="{{ toggle_link.href }}" class="btn">{{ toggle_link.texto }}</a>{% endif %}
+      {% if extra_link %}<a href="{{ extra_link.href }}" {% if extra_link.target %}target="{{ extra_link.target }}"{% endif %} class="btn">{{ extra_link.texto }}</a>{% endif %}
+      {% if nuevo_link %}<a href="{{ nuevo_link.href }}" class="btn primary">{{ nuevo_link.texto }}</a>{% endif %}
+    </div>
   </div>
   {% for it in items %}
-  <div class="row">
+  <div class="row{% if it.de_baja %} de-baja{% endif %}">
     <div class="main">
       <div><a href="{{ it.href }}"><strong>{{ it.principal }}</strong></a>{% if it.tag %} <span class="tag {{ it.tag_clase or 'ok' }}">{{ it.tag }}</span>{% endif %}</div>
       {% if it.sub %}<div class="meta">{{ it.sub }}</div>{% endif %}

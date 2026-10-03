@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar " + actividad.codigo if actividad else "Nueva actividad" }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ "Editar " + actividad.codigo if actividad else "Nueva actividad" }}</h2>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% set v = valores or actividad %}
+  <form class="inline" method="post"
+        action="{{ '/ui/actividades/' + actividad.codigo + '/editar' if actividad else '/ui/actividades' }}">
+    {% if not actividad %}
+    <label>Código (ej. ADM-04-01)</label>
+    <input type="text" name="codigo" required value="{{ v.codigo if v else '' }}">
+    {% endif %}
+    <label>Descripción</label>
+    <textarea name="descripcion" required>{{ v.descripcion if v else '' }}</textarea>
+    <label>Área</label>
+    <input type="text" name="area" required value="{{ v.area if v else '' }}">
+    <label>Nivel</label>
+    <input type="text" name="nivel" required value="{{ v.nivel if v else '' }}">
+    <label>Competencia requerida</label>
+    <input type="text" name="competencia" value="{{ v.competencia if v else '' }}">
+    <label>Frecuencia</label>
+    <input type="text" name="frecuencia" value="{{ v.frecuencia if v else '' }}">
+    <label class="check-inline"><input type="checkbox" name="es_critica" value="true" {% if v and v.es_critica %}checked{% endif %}> Es una actividad crítica</label>
+    <label>Puesto que la posee formalmente</label>
+    <select name="puesto_codigo">
+      <option value="">— Sin puesto —</option>
+      {% for p in puestos %}
+      <option value="{{ p.codigo }}" {% if v and (v.puesto_codigo|string) == (p.codigo|string) %}selected{% endif %}>{{ p.codigo }} — {{ p.nombre }}</option>
+      {% endfor %}
+    </select>
+    <label>Función organizacional</label>
+    <select name="funcion_organizacional_id">
+      <option value="">— Sin función —</option>
+      {% for f in funciones %}
+      <option value="{{ f.id }}" {% if v and v.funcion_organizacional_id and (v.funcion_organizacional_id|string) == (f.id|string) %}selected{% endif %}>{{ f.codigo }} — {{ f.nombre }}</option>
+      {% endfor %}
+    </select>
+    <label>Notas</label>
+    <textarea name="notas">{{ v.notas if v else '' }}</textarea>
+    <div class="actions">
+      <button type="submit" class="primary">Guardar</button>
+      <a href="{{ '/ui/actividades/' + actividad.codigo if actividad else '/ui/listado/actividades' }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

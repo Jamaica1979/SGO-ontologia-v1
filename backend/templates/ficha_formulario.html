@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ formulario.codigo }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="persona-head">
+    <div class="avatar">{{ formulario.codigo[-2:] }}</div>
+    <div>
+      <h2>{{ formulario.codigo }} — {{ formulario.nombre }}</h2>
+      <p class="sub">{{ formulario.origen or "Origen sin especificar" }}{% if formulario.frecuencia %} · {{ formulario.frecuencia }}{% endif %}</p>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <a href="/ui/formularios/{{ formulario.codigo }}/editar" class="btn">Editar</a>
+      <form method="post" action="/ui/formularios/{{ formulario.codigo }}/eliminar"
+            onsubmit="return confirm('¿Eliminar el formulario {{ formulario.codigo }}? Esta acción no se puede deshacer.');">
+        <button type="submit" class="danger">Eliminar</button>
+      </form>
+    </div>
+  </div>
+
+  <table style="margin-top:14px;font-size:13px">
+    <tr><td style="color:var(--gray);padding-right:12px">Emisor</td><td>{{ formulario.emisor or "—" }}</td></tr>
+    <tr><td style="color:var(--gray);padding-right:12px">Receptor</td><td>{{ formulario.receptor or "—" }}</td></tr>
+    <tr><td style="color:var(--gray);padding-right:12px">Frecuencia</td><td>{{ formulario.frecuencia or "—" }}</td></tr>
+  </table>
+
+  <h3>Procedimientos que lo generan o usan</h3>
+  {% for p in procedimientos %}
+  <a href="/ui/procedimientos/{{ p.codigo }}" class="tag ok" style="margin:3px;text-decoration:none">{{ p.codigo }} — {{ p.nombre }}</a>
+  {% else %}<p class="empty">Ningún procedimiento vinculado todavía.</p>{% endfor %}
+
+  <h3>Mecanismos que lo usan como soporte documental</h3>
+  {% for me in mecanismos %}
+  <a href="/ui/mecanismos/{{ me.codigo }}" class="tag ok" style="margin:3px;text-decoration:none">{{ me.codigo }} — {{ me.nombre }}</a>
+  {% else %}<p class="empty">Ningún mecanismo vinculado todavía.</p>{% endfor %}
+</div>
+{% endblock %}

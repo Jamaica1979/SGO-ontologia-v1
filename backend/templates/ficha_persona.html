@@ -5,12 +5,25 @@
   <div class="persona-head">
     <div class="avatar">{{ iniciales }}</div>
     <div>
-      <h2>{{ persona.nombre }} {{ persona.apellido }}</h2>
+      <h2>{{ persona.nombre }} {{ persona.apellido }}{% if not persona.activo %} <span class="tag off">BAJA</span>{% endif %}</h2>
       <p class="sub">{{ convenio_nombre or "Sin convenio cargado" }}{% if persona.legajo %} · Legajo {{ persona.legajo }}{% endif %}</p>
     </div>
-    <span class="tag {% if persona.estado_legajo == 'completo' %}ok{% else %}warn{% endif %}" style="margin-left:auto">
-      Legajo {{ persona.estado_legajo }}
-    </span>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+      <span class="tag {% if persona.estado_legajo == 'completo' %}ok{% else %}warn{% endif %}">
+        Legajo {{ persona.estado_legajo }}
+      </span>
+      <a href="/ui/personas/{{ persona.id }}/editar" class="btn">Editar</a>
+      {% if persona.activo %}
+      <form method="post" action="/ui/personas/{{ persona.id }}/baja"
+            onsubmit="return confirm('¿Dar de baja a {{ persona.nombre }} {{ persona.apellido }}? Queda registrado en el Historial y se puede reactivar después.');">
+        <button type="submit" class="danger">Dar de baja</button>
+      </form>
+      {% else %}
+      <form method="post" action="/ui/personas/{{ persona.id }}/alta">
+        <button type="submit" class="primary">Dar de alta</button>
+      </form>
+      {% endif %}
+    </div>
   </div>
 
   <h3>Lo que ocupa hoy — {{ coberturas|length }} cobertura{{ "" if coberturas|length == 1 else "s" }}</h3>

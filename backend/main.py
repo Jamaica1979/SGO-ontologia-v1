@@ -9,7 +9,7 @@ import models as m
 from routers import (plantas, puestos, personas, actividades, convenios, mecanismos, asignaciones, fichas,
                      dashboard, ui_personas, ui_puestos, ui_plantas, ui_dashboard, ui_listados,
                      ui_actividades, ui_mecanismos, ui_procedimientos, ui_indicadores, ui_historial, ui_reporte,
-                     organigrama, ui_organigrama)
+                     organigrama, ui_organigrama, formularios, ui_formularios, procedimientos, indicadores)
 
 app = FastAPI(title="SGO Cantera Eldorado v3 — por objetos")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -19,7 +19,8 @@ for r in (plantas.router, puestos.router, personas.router, actividades.router, c
           mecanismos.router, asignaciones.router, fichas.router, dashboard.router,
           ui_personas.router, ui_puestos.router, ui_plantas.router, ui_dashboard.router, ui_listados.router,
           ui_actividades.router, ui_mecanismos.router, ui_procedimientos.router, ui_indicadores.router,
-          ui_historial.router, ui_reporte.router, organigrama.router, ui_organigrama.router):
+          ui_historial.router, ui_reporte.router, organigrama.router, ui_organigrama.router,
+          formularios.router, ui_formularios.router, procedimientos.router, indicadores.router):
     app.include_router(r)
 
 
