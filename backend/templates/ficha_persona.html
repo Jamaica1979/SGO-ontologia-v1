@@ -1,5 +1,17 @@
 {% extends "base.html" %}
-{% block title %}{{ persona.nombre }} {{ persona.apellido }}{% endblock %}
+{% block title %}{{ persona.nombre }} {{ persona.apellido }}<script>
+function contarSueltas(root) {
+  var inputs = root.querySelectorAll('input[name=actividad_ids]');
+  var marcadas = root.querySelectorAll('input[name=actividad_ids]:checked').length;
+  var el = root.querySelector('.contador');
+  if (el) el.textContent = 'Marcaste ' + marcadas + ' de ' + inputs.length + ' · quedan ' + (inputs.length - marcadas) + ' sin marcar';
+}
+function marcarTodasSueltas(root, valor) {
+  root.querySelectorAll('input[name=actividad_ids]').forEach(function(i){ i.checked = valor; });
+  contarSueltas(root);
+}
+</script>
+{% endblock %}
 {% block content %}
 <div class="card">
   <div class="persona-head">
@@ -12,6 +24,7 @@
       <span class="tag {% if persona.estado_legajo == 'completo' %}ok{% else %}warn{% endif %}">
         Legajo {{ persona.estado_legajo }}
       </span>
+      <a href="/ui/reportes/personas/{{ persona.id }}.pdf" target="_blank" class="btn">Ficha de reestructuración (PDF)</a>
       <a href="/ui/personas/{{ persona.id }}/editar" class="btn">Editar</a>
       {% if persona.activo %}
       <form method="post" action="/ui/personas/{{ persona.id }}/baja"
@@ -28,6 +41,20 @@
 
   <h3>Lo que ocupa hoy — {{ coberturas|length }} cobertura{{ "" if coberturas|length == 1 else "s" }}</h3>
   <div id="coberturas">{% include "_coberturas.html" %}</div>
+
+  {% if sugerencias %}
+  <div class="aviso-ok" style="background:var(--warn-bg);border-color:var(--warn)">
+    <b>Para empezar:</b> esta persona todavía no tiene coberturas. Hoy hay puestos o actividades sin cubrir, por ejemplo:
+    <ul style="margin:6px 0 0;padding-left:18px">
+      {% for f in sugerencias %}<li><a href="/ui/reparto/{{ f.puesto_codigo }}{% if f.planta_id %}?planta_id={{ f.planta_id }}{% if f.etapa and f.etapa != 'sin_etapa' %}&etapa={{ f.etapa }}{% endif %}{% endif %}"><b>{{ f.puesto_codigo }}</b> — {{ f.puesto_nombre }}</a>
+        <span class="meta">· {{ f.planta_nombre }} · {{ 'sin responsable' if f.estado == 'sin_asignar' else (f.n_sin_cubrir ~ ' actividad(es) sin cubrir') }}</span></li>{% endfor %}
+    </ul>
+    <a href="/ui/reportes/cobertura?solo_pendientes=1">Ver todos los pendientes →</a>
+  </div>
+  {% endif %}
+
+  <h3>Actividades a cargo</h3>
+  <div id="actividades-a-cargo">{% include "_actividades_a_cargo.html" %}</div>
 
   <h3>Agregar una nueva cobertura</h3>
   <div id="nueva-asignacion">{% include "_form_nueva_asignacion.html" %}</div>

@@ -5,7 +5,17 @@
     <li>{{ c.persona }} ({{ c.puesto_codigo or 'perfil' }}{% if c.etapa %}, {{ c.etapa }}{% endif %}) ya cubre: {{ c.actividades_en_conflicto|join(', ') }}</li>
     {% endfor %}
   </ul>
-  <p>¿Confirmás igual? Queda registrado como cobertura intencional, no reemplaza a la anterior.</p>
+  {% if puede_excluir %}
+  <p><b>Lo recomendado:</b> asignar el puesto <i>sin</i> esas actividades. Quedan con quien las lleva hoy y figuran como cedidas en la asignación del puesto.</p>
+  <form hx-post="/ui/personas/{{ persona_id }}/asignaciones/nueva" hx-target="#nueva-asignacion" hx-swap="innerHTML" style="margin-bottom:8px">
+    <input type="hidden" name="puesto_codigo" value="{{ puesto_codigo or '' }}">
+    <input type="hidden" name="planta_id" value="{{ planta_id }}">
+    <input type="hidden" name="etapa" value="{{ etapa or '' }}">
+    <input type="hidden" name="sin_conflictivas" value="true">
+    <button type="submit" class="primary">Asignar el puesto sin esas actividades</button>
+  </form>
+  {% endif %}
+  <p>{% if puede_excluir %}O, si querés que las dos personas las lleven,{% else %}¿Confirmás igual?{% endif %} queda registrado como cobertura intencional (doble cobertura), no reemplaza a la anterior.</p>
   <form hx-post="/ui/personas/{{ persona_id }}/asignaciones/nueva" hx-target="#nueva-asignacion" hx-swap="innerHTML">
     <input type="hidden" name="puesto_codigo" value="{{ puesto_codigo or '' }}">
     <input type="hidden" name="planta_id" value="{{ planta_id }}">

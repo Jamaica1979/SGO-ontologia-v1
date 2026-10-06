@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Asignación por persona{% endblock %}
+{% block content %}
+<style>
+main { max-width: 1180px; }
+.fila-persona { display: grid; grid-template-columns: 2.1fr 1.3fr 1.5fr repeat(5, 74px); gap: 8px; align-items: center; width: 100%; }
+.fila-persona.cab { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--gray); font-weight: 600; padding: 0 12px 4px; }
+.fila-persona .n { text-align: right; font-variant-numeric: tabular-nums; }
+details.persona > summary { list-style: none; cursor: pointer; }
+details.persona > summary::-webkit-details-marker { display: none; }
+details.persona[open] > summary { margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+</style>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <h2>Asignación por persona</h2>
+    <a class="btn primary" href="/ui/reportes/personas.xlsx?{% if planta_id %}planta_id={{ planta_id }}&{% endif %}{% if incluir_bajas %}incluir_bajas=true{% endif %}">Descargar Excel</a>
+  </div>
+  <p class="meta" style="margin:2px 0 0">Tocá una persona para ver el detalle. <b>Propias</b>: las de su puesto. <b>Recibidas</b>: actividades sueltas de otros puestos.
+    <b>Cedidas</b>: actividades de su puesto que lleva otra persona (no se suman al total).</p>
+
+  <form method="get" class="filtros">
+    <label>Planta:
+      <select name="planta_id" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for pl in plantas %}<option value="{{ pl.id }}" {% if pl.id == planta_id %}selected{% endif %}>{{ pl.nombre }}</option>{% endfor %}
+      </select>
+    </label>
+    <label><input type="checkbox" name="incluir_bajas" value="true" {% if incluir_bajas %}checked{% endif %} onchange="this.form.submit()"> incluir personas dadas de baja</label>
+  </form>
+
+  <div class="kpis">
+    <div class="kpi"><b>{{ n_personas }}</b><span>personas</span></div>
+    <div class="kpi ok"><b>{{ n_con_asignacion }}</b><span>con actividades asignadas</span></div>
+    <div class="kpi {{ 'warn' if n_sin_asignacion else 'ok' }}"><b>{{ n_sin_asignacion }}</b><span>sin asignación</span></div>
+    <div class="kpi"><b>{{ total_a_cargo }}</b><span>actividades asignadas (suma)</span></div>
+    <div class="kpi warn"><b>{{ total_cedidas }}</b><span>cedidas entre personas</span></div>
+  </div>
+
+  <div class="fila-persona cab" style="margin-top:14px">
+    <span>Persona</span><span>Puesto(s)</span><span>Planta(s)</span>
+    <span class="n">Propias</span><span class="n">Recibidas</span><span class="n">Cedidas</span><span class="n">Total</span><span class="n">Críticas</span>
+  </div>
+  {% for r in filas %}
+  <details class="bloque persona">
+    <summary>
+      <div class="fila-persona">
+        <span><a href="/ui/personas/{{ r.persona_id }}"><strong>{{ r.persona }}</strong></a>{% if not r.activo %} <span class="tag off">BAJA</span>{% endif %}</span>
+        <span class="meta">{{ r.puestos|join(', ') if r.puestos else ('solo actividades sueltas' if r.n_recibidas else '—') }}</span>
+        <span class="meta">{{ r.plantas|join(', ') if r.plantas else '—' }}</span>
+        <span class="n">{{ r.n_propias }}</span><span class="n">{{ r.n_recibidas }}</span>
+        <span class="n">{% if r.n_cedidas %}<span class="tag warn">{{ r.n_cedidas }}</span>{% else %}0{% endif %}</span>
+        <span class="n"><b>{{ r.n_total }}</b></span>
+        <span class="n">{{ r.n_criticas }}</span>
+      </div>
+    </summary>
+    {% if r.sin_asignacion %}
+      <p class="empty">Sin ninguna cobertura activa. <a href="/ui/personas/{{ r.persona_id }}">Asignarle un puesto o actividades →</a></p>
+    {% else %}
+      {% with a_cargo=r, abrir=true %}{% include "_actividades_a_cargo.html" %}{% endwith %}
+      <p style="margin:8px 0 0"><a href="/ui/reportes/personas/{{ r.persona_id }}.pdf" target="_blank" class="btn">Ficha de reestructuración (PDF)</a></p>
+    {% endif %}
+  </details>
+  {% else %}
+  <p class="empty">No hay personas para mostrar con este filtro.</p>
+  {% endfor %}
+</div>
+{% endblock %}

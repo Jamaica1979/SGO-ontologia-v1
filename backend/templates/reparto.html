@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Reparto — {{ puesto.codigo }}{% endblock %}
+{% block content %}
+<style>main { max-width: 1100px; }</style>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+    <div>
+      <h2>Reparto de actividades — <a href="/ui/puestos/{{ puesto.codigo }}" style="color:var(--navy);text-decoration:none">{{ puesto.codigo }}</a> · {{ puesto.nombre }}</h2>
+      <p class="meta" style="margin:2px 0 0">Elegí quién lleva cada actividad. El titular conserva el puesto: lo que otra persona toma queda registrado como <b>cedida</b>.
+        Cada cambio se guarda al instante y queda en el Historial.</p>
+    </div>
+    <a href="/ui/reportes/cobertura" class="btn">Tablero de cobertura</a>
+  </div>
+
+  {% if por_planta %}
+  <div class="pestanas">
+    {% for pl in plantas %}<a class="{{ 'activa' if pl.id == planta_id }}" href="/ui/reparto/{{ puesto.codigo }}?planta_id={{ pl.id }}{% if etapa %}&etapa={{ etapa }}{% endif %}">{{ pl.nombre }}</a>{% endfor %}
+  </div>
+  {% endif %}
+  {% if requiere_etapa %}
+  <div class="pestanas">
+    <a class="{{ 'activa' if not etapa }}" href="/ui/reparto/{{ puesto.codigo }}?planta_id={{ planta_id }}">Todas las etapas</a>
+    {% for e in etapas %}<a class="{{ 'activa' if e == etapa }}" href="/ui/reparto/{{ puesto.codigo }}?planta_id={{ planta_id }}&etapa={{ e }}">{{ e|capitalize }}</a>{% endfor %}
+  </div>
+  {% endif %}
+
+  {% include "_reparto_tabla.html" %}
+</div>
+{% endblock %}

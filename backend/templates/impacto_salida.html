@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>main { max-width: 1000px; }</style>
+<div class="card">
+  <h2>{{ titulo }}</h2>
+  <p class="meta">{{ intro }}</p>
+
+  <h3>Coberturas que se finalizan</h3>
+  {% for a in asignaciones %}
+  <div class="row"><div class="main">
+    {% if a.puesto_codigo %}<b>{{ a.puesto_codigo }}</b> — {{ a.puesto.nombre }}{% else %}📎 {{ a.perfil.nombre }}{% endif %}
+    <div class="meta">{{ a.planta.nombre }}{% if a.etapa and a.etapa != 'sin_etapa' %} · {{ a.etapa }}{% endif %}</div>
+  </div></div>
+  {% endfor %}
+
+  <form method="post" action="{{ accion_url }}">
+  {% if filas %}
+    <div class="conflict-box" style="margin:14px 0">
+      ⚠️ Si no se hace nada más, <b>{{ filas|length }} actividad{{ "" if filas|length == 1 else "es" }} quedarían sin nadie que {{ "la lleve" if filas|length == 1 else "las lleve" }}</b>.
+      Podés decidir ahora quién las toma, o dejarlas sin cubrir (van a aparecer en el tablero de pendientes).
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:13px">
+      <span>Asignar todas a:</span>
+      <select id="todas-a" onchange="aplicarATodas(this.value)">
+        <option value="">— elegir —</option>
+        {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+      </select>
+    </div>
+    <table class="tabla">
+      <thead><tr><th>Actividad</th><th>Puesto de origen</th><th>¿Quién la lleva desde ahora?</th></tr></thead>
+      <tbody>
+      {% for f in filas %}
+      <tr>
+        <td><a href="/ui/actividades/{{ f.actividad.codigo }}">{{ f.actividad.codigo }}</a> — {{ f.actividad.descripcion }}
+          {% if f.actividad.es_critica %}<span class="tag crit">crítica</span>{% endif %}</td>
+        <td>{{ f.puesto_codigo or '—' }}</td>
+        <td>
+          <select class="dest" name="dest_{{ f.actividad.id }}">
+            <option value="">Dejar sin cubrir</option>
+            {% if f.devolvible_a %}<option value="__titular__">Devolver al titular del puesto ({{ f.devolvible_a|join(', ') }})</option>{% endif %}
+            {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+          </select>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="aviso-ok" style="margin-top:14px">No queda ninguna actividad sin cubrir: otras personas ya llevan todo lo que esta cobertura incluye.</p>
+  {% endif %}
+    <div class="actions" style="display:flex;gap:8px;margin-top:16px">
+      <button type="submit" class="primary">{{ texto_boton }}</button>
+      <a href="{{ volver_url }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+<script>
+function aplicarATodas(valor) {
+  if (!valor) return;
+  document.querySelectorAll('select.dest').forEach(function(s) {
+    for (var i = 0; i < s.options.length; i++) { if (s.options[i].value === valor) { s.value = valor; break; } }
+  });
+}
+</script>
+{% endblock %}

@@ -21,6 +21,13 @@ automáticamente desde ahí.
 - **CRUD completo con baja lógica para los 7 objetos principales** (3 de octubre de 2026): Puesto, Actividad, Planta, Persona, Mecanismo, Procedimiento e Indicador ahora tienen pantalla propia de **alta** (botón "+ Nuevo..." en cada listado), **edición** (botón "Editar" en la ficha) y **baja** (botón "Dar de baja" en la ficha, con confirmación). A diferencia de Formulario, acá **nunca se borra físicamente un registro** — dar de baja cambia el campo de estado propio de cada objeto (`vigente`, `activo` o `estado` según el caso) y el registro sigue existiendo, con su historial completo, pudiendo **reactivarse** con el botón "Dar de alta". Los listados muestran por defecto solo los vigentes, con un link "Ver también dados de baja" para mostrar todos (los dados de baja aparecen atenuados y con la etiqueta **BAJA**). Procedimiento necesitó una migración nueva (columna `vigente`) porque era el único de los 7 sin ningún campo de estado. De paso se completó el registro en el Historial de auditoría de `crear`/`editar` para Puesto, Actividad, Planta y Persona, que ya existían en la API pero no quedaban auditados. Mecanismo, Procedimiento e Indicador no tenían API de alta/edición hasta ahora — se agregó (`/api/mecanismos`, `/api/procedimientos` nuevo, `/api/indicadores` nuevo).
 - **Descripción general (Propósito y Alcance) de los 17 procedimientos** (3 de octubre de 2026): cargada en el campo `descripcion` de cada Procedimiento, tomada de la Parte V de la planilla. La ficha ya no muestra el cartel de "pendiente" y respeta el salto de línea entre Propósito y Alcance.
 - **Nombre del indicador KPI-F04 corregido** (3 de octubre de 2026): "Margen bruto por planta" → "Margen bruto por planta (%)", para que coincida con la planilla. Sin cambios en fórmula, umbrales ni responsables.
+- **Reparto de actividades y reportes por persona** (5 de octubre de 2026): 
+  - *Cesiones (Opción A)*: la persona titular conserva su puesto y las actividades que se pasan a otra quedan registradas como "cedidas" en su asignación (tabla nueva `actividades_cedidas`, migración `4afec79fdaed`). Las actividades efectivas de un titular = las del puesto menos las cedidas; quien las recibe las lleva en su perfil individual. El organigrama no cambia. Las cesiones se heredan si el puesto cambia de titular.
+  - *Ficha de Persona*: sección "Actividades a cargo" (propias del puesto, cedidas, y sueltas con su puesto de origen); contador "N de M" y casillero "todas" al elegir actividades sueltas; opción de asignar "el resto" a otra persona; botón "Asignar el puesto sin esas actividades" ante un conflicto.
+  - *Reparto por puesto* (`/ui/reparto/{puesto}`): una fila por actividad con quién la lleva (del puesto, trasladada, doble cobertura o sin responsable) y un selector para moverla; botón "asignar las sin responsable a...".
+  - *Reportes* (`/ui/reportes`): detalle por persona (HTML y Excel), tablero de cobertura por puesto (HTML y Excel, con las actividades sin cubrir) y **Ficha de reestructuración en PDF** por persona.
+  - *Impacto de una salida*: antes de finalizar una cobertura o dar de baja a una persona se muestran las actividades que quedarían sin responsable y se reasignan en el mismo paso. Nada se borra; un perfil individual sin asignaciones se archiva.
+  - *Migración automática*: al arrancar, la app aplica las migraciones pendientes de Alembic.
 
 **Afuera a propósito:**
 - Comparador de puestos — decisión de Jamaica, cada Puesto ya tiene ficha propia y navegable
@@ -51,7 +58,7 @@ python -m uvicorn main:app --reload --port 8000
 Abrir **http://localhost:8000** — redirige directo al Dashboard.
 Usuario/clave: `eldorado` / `cantera2026` (los mismos de siempre; se pueden cambiar con las variables de entorno `ADMIN_USER` / `ADMIN_PASS`).
 
-La base (`cantera.db`) ya viene con el esquema nuevo y los datos migrados — no hace falta correr nada de Alembic ni el script de migración para usarlo tal cual.
+La base (`cantera.db`) ya viene con el esquema nuevo y los datos migrados — **Importante:** si ya cargaste datos propios en tu `cantera.db` (local o en Render), NO la reemplaces con la del zip: copiá solo el código. La app aplica sola la migración nueva al arrancar; conviene hacer una copia de seguridad antes. No hace falta correr nada de Alembic ni el script de migración para usarlo tal cual.
 
 ## Estructura
 
@@ -61,6 +68,7 @@ app/
     main.py            → arma la app y conecta todos los routers
     models.py           → los 24 Object Types / Junction Objects / Link Types
     database.py          → conexión SQLAlchemy
+    reparto.py             → servicio de reparto: cesiones, traslados, cobertura por puesto, impacto de salidas
     functions.py          → cálculos que se corren al vuelo (cobertura, riesgo, alertas, semáforo)
     migrar_datos.py        → el script que migró los datos desde cantera_v2_origen.db (ya ejecutado, queda de referencia)
     cantera.db             → la base con el esquema nuevo, ya poblada
@@ -72,7 +80,7 @@ app/
       asignaciones.py, fichas.py, dashboard.py   → API JSON (/api/...)
       ui_personas.py, ui_puestos.py, ui_plantas.py, ui_actividades.py, ui_mecanismos.py,
       ui_procedimientos.py, ui_indicadores.py, ui_formularios.py,
-      ui_dashboard.py, ui_listados.py, ui_shared.py  → páginas htmx (/ui/...), con
+      ui_reparto.py, ui_reportes.py, ui_dashboard.py, ui_listados.py, ui_shared.py  → páginas htmx (/ui/...), con
       alta/edición/baja para los 7 objetos principales + Formulario
     templates/          → las páginas y fragmentos htmx
     static/             → CSS y htmx (empaquetado local, no depende de un CDN)
@@ -86,6 +94,7 @@ app/
 - `/ui/listado/{puestos|personas|plantas|actividades|mecanismos|procedimientos|indicadores|formularios}` — listados, con links a cada ficha, botón "+ Nuevo..." y (salvo Formulario) link "Ver también dados de baja"
 - `/ui/personas/{id}`, `/ui/puestos/{codigo}`, `/ui/plantas/{id}`, `/ui/actividades/{codigo}`, `/ui/mecanismos/{codigo}`, `/ui/procedimientos/{codigo}`, `/ui/indicadores/{codigo}` — la ficha de cada objeto, con botones Editar / Dar de baja / Dar de alta
 - `/ui/{tipo}/nuevo` y `/ui/{tipo}/{id}/editar` — formularios de alta y edición para cada uno de los 7 objetos
+- `/ui/reportes` — reportes por persona, cobertura por puesto, exportes Excel y PDF; `/ui/reparto/{puesto}` — reparto de actividades de un puesto
 - `/api/...` — toda la API JSON, documentada automáticamente en `/docs`
 
 ## Llevarlo a red (Render + GitHub)

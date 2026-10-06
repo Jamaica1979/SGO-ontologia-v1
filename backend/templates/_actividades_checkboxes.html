@@ -5,10 +5,25 @@
 </div>
 {% endif %}
 {% if actividades %}
-<div class="checklist">
-  {% for a in actividades %}
-  <label class="check-row"><input type="checkbox" name="actividad_ids" value="{{ a.id }}"> {{ a.codigo }} — {{ a.descripcion }}</label>
-  {% endfor %}
+<div id="bloque-origen" onchange="contarSueltas(this)">
+  <div class="meta" style="display:flex;justify-content:space-between;align-items:center;margin:4px 0">
+    <span class="contador">Marcaste 0 de {{ actividades|length }} · quedan {{ actividades|length }} sin marcar</span>
+    <span><a href="#" onclick="marcarTodasSueltas(document.getElementById('bloque-origen'), true); return false;">marcar todas</a> ·
+      <a href="#" onclick="marcarTodasSueltas(document.getElementById('bloque-origen'), false); return false;">ninguna</a></span>
+  </div>
+  <div class="checklist">
+    {% for a in actividades %}
+    <label class="check-row"><input type="checkbox" name="actividad_ids" value="{{ a.id }}">
+      <span>{{ a.codigo }} — {{ a.descripcion }}
+        <span class="meta">· hoy: {% if hoy.get(a.id) %}{{ hoy[a.id] }}{% else %}<b style="color:var(--crit)">sin responsable</b>{% endif %}</span></span></label>
+    <input type="hidden" name="todas_ids" value="{{ a.id }}">
+    {% endfor %}
+  </div>
+  <label style="margin-top:10px;display:block">Las que no marques: ¿a quién se las asignás? <span class="meta">(opcional — alcanza a las que hoy lleva el titular o nadie, no a las que ya tomó otra persona)</span></label>
+  <select name="resto_persona_id">
+    <option value="">Dejarlas como están</option>
+    {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+  </select>
 </div>
 {% elif puesto_codigo %}
 <p class="empty">Ese puesto no tiene actividades cargadas.</p>

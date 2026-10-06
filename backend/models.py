@@ -339,6 +339,17 @@ class PerfilActividad(Base):
     orden = Column(Integer, server_default="0")
 
 
+class ActividadCedida(Base):
+    """Opción A del reparto de actividades: una actividad de un Puesto que la
+    persona titular de ESA Asignación no ejecuta porque la lleva otra persona
+    (vía su Perfil individual). La asignación al Puesto se mantiene entera — el
+    organigrama no cambia — y la excepción queda registrada y visible."""
+    __tablename__ = "actividades_cedidas"
+    asignacion_id = Column(Integer, ForeignKey("asignaciones.id"), primary_key=True)
+    actividad_id = Column(Integer, ForeignKey("actividades.id"), primary_key=True)
+    created_at = Column(Text, server_default=NOW)
+
+
 class ProcedimientoPuesto(Base):
     __tablename__ = "procedimiento_puestos"
     procedimiento_id = Column(Integer, ForeignKey("procedimientos.id"), primary_key=True)

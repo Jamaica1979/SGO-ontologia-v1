@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Cobertura de actividades{% endblock %}
+{% block content %}
+<style>main { max-width: 1180px; }</style>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <h2>Cobertura de actividades por puesto</h2>
+    <a class="btn primary" href="/ui/reportes/cobertura.xlsx?{% if planta_id %}planta_id={{ planta_id }}&{% endif %}{% if solo_pendientes %}solo_pendientes=true{% endif %}">Descargar Excel</a>
+  </div>
+  <p class="meta" style="margin:2px 0 0">Un puesto está <b>cubierto</b> cuando todas sus actividades las lleva alguien. <b>Parcial</b>: el titular cedió actividades que nadie tomó.
+    <b>Sin asignar</b>: puesto vacante. Tocá "Repartir" para decidir quién lleva cada actividad.</p>
+
+  <form method="get" class="filtros">
+    <label>Planta:
+      <select name="planta_id" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for pl in plantas %}<option value="{{ pl.id }}" {% if pl.id == planta_id %}selected{% endif %}>{{ pl.nombre }}</option>{% endfor %}
+      </select>
+    </label>
+    <label><input type="checkbox" name="solo_pendientes" value="true" {% if solo_pendientes %}checked{% endif %} onchange="this.form.submit()"> solo lo pendiente (parciales y sin asignar)</label>
+  </form>
+
+  <div class="kpis">
+    <div class="kpi ok"><b>{{ resumen.pct_cobertura }}%</b><span>{{ resumen.cubiertas }} de {{ resumen.total }} puestos-planta cubiertos</span></div>
+    <div class="kpi {{ 'warn' if resumen.parciales else 'ok' }}"><b>{{ resumen.parciales }}</b><span>parciales</span></div>
+    <div class="kpi {{ 'crit' if resumen.sin_asignar else 'ok' }}"><b>{{ resumen.sin_asignar }}</b><span>sin asignar</span></div>
+    <div class="kpi {{ 'crit' if n_sin_cubrir else 'ok' }}"><b>{{ n_sin_cubrir }}</b><span>actividades cedidas que nadie lleva</span></div>
+    <div class="kpi warn"><b>{{ n_cedidas }}</b><span>actividades cedidas en total</span></div>
+  </div>
+
+  <table class="tabla" style="margin-top:14px">
+    <thead><tr>
+      <th>Puesto</th><th>Planta</th><th>Estado</th><th class="num">Actividades</th><th class="num">Las lleva el titular</th>
+      <th class="num">Las lleva otra persona</th><th class="num">Sin cubrir</th><th>Responsables</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for f in filas %}
+    <tr class="{{ 'sin-resp' if f.estado == 'sin_asignar' else '' }}">
+      <td><a href="/ui/puestos/{{ f.puesto_codigo }}">{{ f.puesto_codigo }}</a> <span class="meta">{{ f.puesto_nombre }}</span></td>
+      <td>{{ f.planta_nombre }}{% if f.etapa and f.etapa != 'sin_etapa' %} <span class="tag warn">{{ f.etapa }}</span>{% endif %}</td>
+      <td><span class="tag {% if f.estado in ('cubierta','cubierta_sin_etapa') %}ok{% elif f.estado == 'parcial' %}warn{% else %}crit{% endif %}">{{ ESTADO_TXT.get(f.estado, f.estado) }}</span></td>
+      <td class="num">{{ f.n_actividades }}</td>
+      <td class="num">{{ f.n_por_titular }}</td>
+      <td class="num">{{ f.n_por_suelta }}</td>
+      <td class="num">
+        {% if f.n_sin_cubrir %}
+        <details><summary style="cursor:pointer"><b style="color:var(--crit)">{{ f.n_sin_cubrir }}</b></summary>
+          <div style="text-align:left;margin-top:4px">{% for a in f.actividades_sin_asignar %}<div class="meta"><a href="/ui/actividades/{{ a.codigo }}">{{ a.codigo }}</a> {{ a.descripcion[:70] }}{% if a.descripcion|length > 70 %}…{% endif %}</div>{% endfor %}</div>
+        </details>
+        {% else %}0{% endif %}
+      </td>
+      <td class="meta">{% for r in f.responsables %}<a href="/ui/personas/{{ r.persona_id }}">{{ r.persona }}</a>{% if r.via == 'perfil' %} (perfil){% endif %}{% if not loop.last %}, {% endif %}{% else %}—{% endfor %}</td>
+      <td><a class="btn" href="/ui/reparto/{{ f.puesto_codigo }}{% if f.planta_id %}?planta_id={{ f.planta_id }}{% if f.etapa and f.etapa != 'sin_etapa' %}&etapa={{ f.etapa }}{% endif %}{% endif %}">Repartir</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" class="empty">Nada para mostrar con este filtro.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

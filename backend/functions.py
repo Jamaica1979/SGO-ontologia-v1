@@ -102,6 +102,9 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
     plantas = db.query(m.Planta).all()
 
     activas = db.query(m.Asignacion).filter(m.Asignacion.estado.in_(["activa", "transicion"])).all()
+    cedidas_por_asig = {}
+    for r in db.query(m.ActividadCedida):
+        cedidas_por_asig.setdefault(r.asignacion_id, set()).add(r.actividad_id)
 
     def actividades_de(puesto_codigo_, perfil_id_):
         if puesto_codigo_:
@@ -136,30 +139,47 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
             directas = [a for a in activas if a.puesto_codigo == p.codigo and matchea(a)]
             if etapa == "sin_etapa" and not directas:
                 continue
+
+            # actividades de este puesto que ya lleva alguien por su Perfil individual en este ámbito
+            ids_puesto = set(act_puesto.keys())
+            cub_perfil, resp_perfil = set(), []
+            for a in activas:
+                if a.perfil_id and matchea(a):
+                    de_perfil = actividades_de(None, a.perfil_id)
+                    interseccion = ids_puesto & de_perfil
+                    if interseccion:
+                        cub_perfil |= interseccion
+                        resp_perfil.append((a, interseccion))
+
             if directas:
                 estado_fila = "cubierta" if etapa != "sin_etapa" else "cubierta_sin_etapa"
                 responsables = [{"persona_id": a.persona_id, "persona": f"{a.persona.nombre} {a.persona.apellido}", "via": "puesto"} for a in directas]
-                acts_sin = []
+                # Opción A: lo que el titular cedió sólo cuenta como cubierto si otra persona lo lleva
+                ced_ids = set()
+                for a in directas:
+                    ced_ids |= cedidas_por_asig.get(a.id, set())
+                ced_ids &= ids_puesto
+                for a, inter in resp_perfil:
+                    if inter & ced_ids:
+                        responsables.append({"persona_id": a.persona_id, "persona": f"{a.persona.nombre} {a.persona.apellido}",
+                                             "via": "perfil", "n_actividades": len(inter & ced_ids)})
+                acts_sin = [act_puesto[i] for i in sorted(ced_ids - cub_perfil)]
+                if acts_sin and estado_fila == "cubierta":
+                    estado_fila = "parcial"
+                n_por_titular, n_cedidas, n_por_suelta = len(ids_puesto) - len(ced_ids), len(ced_ids), len(ced_ids & cub_perfil)
             else:
-                cubiertas_ids, resp_perfil = set(), []
-                for a in activas:
-                    if a.perfil_id and matchea(a):
-                        de_perfil = actividades_de(None, a.perfil_id)
-                        interseccion = set(act_puesto.keys()) & de_perfil
-                        if interseccion:
-                            cubiertas_ids |= interseccion
-                            resp_perfil.append({"persona_id": a.persona_id, "persona": f"{a.persona.nombre} {a.persona.apellido}",
-                                                 "via": "perfil", "n_actividades": len(interseccion)})
-                acts_sin = [act_puesto[i] for i in act_puesto if i not in cubiertas_ids]
+                acts_sin = [act_puesto[i] for i in act_puesto if i not in cub_perfil]
                 if not act_puesto:
                     estado_fila = "sin_actividades"
-                elif not cubiertas_ids:
+                elif not cub_perfil:
                     estado_fila = "sin_asignar"
                 elif acts_sin:
                     estado_fila = "parcial"
                 else:
                     estado_fila = "cubierta"
-                responsables = resp_perfil
+                responsables = [{"persona_id": a.persona_id, "persona": f"{a.persona.nombre} {a.persona.apellido}",
+                                 "via": "perfil", "n_actividades": len(inter)} for a, inter in resp_perfil]
+                n_por_titular, n_cedidas, n_por_suelta = 0, 0, len(cub_perfil)
 
             filas.append({
                 "puesto_codigo": p.codigo, "puesto_nombre": p.nombre, "area": p.area,
@@ -167,6 +187,8 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
                 "planta_estado": pl.estado if pl else None, "etapa": etapa,
                 "estado": estado_fila, "responsables": responsables,
                 "n_actividades": len(act_puesto),
+                "n_por_titular": n_por_titular, "n_cedidas": n_cedidas, "n_por_suelta": n_por_suelta,
+                "n_sin_cubrir": len(acts_sin),
                 "actividades_sin_asignar": [{"id": a.id, "codigo": a.codigo, "descripcion": a.descripcion, "es_critica": bool(a.es_critica)} for a in acts_sin],
             })
     return filas

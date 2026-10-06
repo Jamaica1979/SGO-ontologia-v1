@@ -9,10 +9,11 @@
       </span>
     </div>
     <div class="meta">
-      {% if f.responsables %}{% for r in f.responsables %}<a href="/ui/personas/{{ r.persona_id }}">{{ r.persona }}</a>{% if r.via == 'perfil' %} (perfil){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+      {% if f.responsables %}{% for r in f.responsables %}<a href="/ui/personas/{{ r.persona_id }}">{{ r.persona }}</a>{% if r.via == 'perfil' %} (perfil{% if r.n_actividades %}, {{ r.n_actividades }} act.{% endif %}){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
       {% else %}<span class="empty">sin responsable</span>{% endif %}
     </div>
   </div>
+  <a class="btn" href="/ui/reparto/{{ f.puesto_codigo }}{% if f.planta_id %}?planta_id={{ f.planta_id }}{% if f.etapa and f.etapa != 'sin_etapa' %}&etapa={{ f.etapa }}{% endif %}{% endif %}">Repartir</a>
   {% if accion_url and (f.planta_id or plantas) %}
   <details>
     <summary class="btn">{{ 'Reasignar' if f.responsables else '+ Asignar' }}</summary>

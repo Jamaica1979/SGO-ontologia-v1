@@ -1,18 +1,29 @@
 <div class="conflict-box">
-  <p>⚠️ <b>Ya hay responsable activo para esto:</b></p>
+  <p>⚠️ <b>Estas actividades ya las lleva alguien:</b></p>
   <ul>
     {% for c in conflictos %}
     <li>{{ c.persona }} ({{ c.puesto_codigo or 'perfil' }}{% if c.etapa %}, {{ c.etapa }}{% endif %}) ya cubre: {{ c.actividades_en_conflicto|join(', ') }}</li>
     {% endfor %}
   </ul>
-  <p>¿Confirmás igual? Queda registrado como cobertura intencional, no reemplaza a la anterior.</p>
-  <form hx-post="/ui/personas/{{ persona_id }}/actividades-sueltas/nueva" hx-target="#nueva-asignacion" hx-swap="innerHTML">
+  {% macro campos(permitir, trasl) %}
     <input type="hidden" name="planta_id" value="{{ planta_id }}">
     <input type="hidden" name="etapa" value="{{ etapa or '' }}">
     {% for aid in actividad_ids %}<input type="hidden" name="actividad_ids" value="{{ aid }}">{% endfor %}
-    <input type="hidden" name="permitir_conflicto" value="true">
+    {% for aid in todas_ids %}<input type="hidden" name="todas_ids" value="{{ aid }}">{% endfor %}
+    <input type="hidden" name="resto_persona_id" value="{{ resto_persona_id or '' }}">
+    {% if permitir %}<input type="hidden" name="permitir_conflicto" value="true">{% endif %}
+    {% if trasl %}<input type="hidden" name="trasladar" value="true">{% endif %}
+  {% endmacro %}
+  <p><b>Lo recomendado:</b> trasladarlas. Si las llevaba el titular de un puesto, las cede (su puesto sigue entero, con esas actividades marcadas como cedidas); si las llevaba otra persona por su perfil individual, se le retiran. Nunca queda doble cobertura.</p>
+  <form hx-post="/ui/personas/{{ persona_id }}/actividades-sueltas/nueva" hx-target="#nueva-asignacion" hx-swap="innerHTML" style="margin-bottom:8px">
+    {{ campos(false, true) }}
+    <button type="submit" class="primary">Trasladar a esta persona</button>
+  </form>
+  <p>O, si querés que ambas personas las lleven, queda registrado como cobertura intencional, no reemplaza a la anterior.</p>
+  <form hx-post="/ui/personas/{{ persona_id }}/actividades-sueltas/nueva" hx-target="#nueva-asignacion" hx-swap="innerHTML">
+    {{ campos(true, false) }}
     <div class="actions">
-      <button type="submit" class="danger">Confirmar de todas formas</button>
+      <button type="submit" class="danger">Confirmar doble cobertura</button>
       <a href="/ui/personas/{{ persona_id }}" class="btn">Cancelar</a>
     </div>
   </form>

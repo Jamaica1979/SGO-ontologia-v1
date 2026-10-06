@@ -9,13 +9,12 @@
           📎 {{ c.perfil_nombre }}
         {% endif %}
         <span class="tag {% if c.estado == 'activa' %}ok{% else %}warn{% endif %}">{{ c.estado }}</span>
+        {% if c.n_cedidas %}<span class="tag warn">{{ c.n_cedidas }} cedida{{ "" if c.n_cedidas == 1 else "s" }}</span>{% endif %}
       </div>
-      <div class="meta">{{ c.planta }}{% if c.etapa and c.etapa != 'sin_etapa' %} · {{ c.etapa }}{% endif %}</div>
+      <div class="meta">{{ c.planta }}{% if c.etapa and c.etapa != 'sin_etapa' %} · {{ c.etapa }}{% endif %}
+        {% if c.puesto_codigo %}· <a href="/ui/reparto/{{ c.puesto_codigo }}?planta_id={{ c.planta_id }}{% if c.etapa and c.etapa != 'sin_etapa' %}&etapa={{ c.etapa }}{% endif %}">repartir actividades</a>{% endif %}</div>
     </div>
-    <button class="danger"
-      hx-delete="/ui/asignaciones/{{ c.asignacion_id }}"
-      hx-target="#coberturas" hx-swap="innerHTML"
-      hx-confirm="¿Finalizar esta cobertura? Queda en el historial, no se borra.">Finalizar</button>
+    <a class="btn danger" href="/ui/asignaciones/{{ c.asignacion_id }}/finalizar">Finalizar…</a>
   </div>
   {% endfor %}
 {% else %}

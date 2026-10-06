@@ -1,4 +1,8 @@
 <div id="coberturas" hx-swap-oob="innerHTML">
   {% include "_coberturas.html" %}
 </div>
+<div id="actividades-a-cargo" hx-swap-oob="innerHTML">
+  {% include "_actividades_a_cargo.html" %}
+</div>
+{% if aviso %}<p class="aviso-ok">{{ aviso }}</p>{% endif %}
 {% include "_form_nueva_asignacion.html" %}

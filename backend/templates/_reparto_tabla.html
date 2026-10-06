@@ -1,0 +1,63 @@
+<div id="reparto">
+  {% set n_titular = cob.filas|selectattr('estado', 'equalto', 'del_puesto')|list|length %}
+  <div class="kpis">
+    <div class="kpi"><b>{{ cob.n_total }}</b><span>actividades del puesto</span></div>
+    <div class="kpi ok"><b>{{ n_titular }}</b><span>las lleva el titular</span></div>
+    <div class="kpi warn"><b>{{ cob.n_trasladadas }}</b><span>las lleva otra persona</span></div>
+    <div class="kpi {{ 'crit' if cob.n_sin_responsable else 'ok' }}"><b>{{ cob.n_sin_responsable }}</b><span>sin responsable</span></div>
+    {% if cob.n_doble %}<div class="kpi warn"><b>{{ cob.n_doble }}</b><span>con doble cobertura</span></div>{% endif %}
+  </div>
+
+  <p class="meta" style="margin:10px 0">
+    Titular{{ "" if cob.titulares_puesto|length == 1 else "es" }} del puesto{% if por_planta %} en esta planta{% endif %}:
+    {% for t in cob.titulares_puesto %}<a href="/ui/personas/{{ t.persona_id }}">{{ t.persona }}</a>{% if not loop.last %}, {% endif %}{% else %}<b style="color:var(--crit)">puesto vacante</b>{% endfor %}
+  </p>
+
+  {% if cob.n_sin_responsable %}
+  <form class="inline" hx-post="/ui/reparto/{{ puesto.codigo }}/asignar-resto" hx-target="#reparto" hx-swap="outerHTML"
+        style="flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px;background:var(--crit-bg);padding:10px 12px;border-radius:8px">
+    <input type="hidden" name="planta_id" value="{{ planta_id or '' }}">
+    <input type="hidden" name="etapa" value="{{ etapa or '' }}">
+    <span style="font-size:13px">Asignar las <b>{{ cob.n_sin_responsable }}</b> actividades que hoy no lleva nadie a:</span>
+    <select name="persona_id" required>
+      <option value="">— elegir persona —</option>
+      {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="primary">Asignar</button>
+  </form>
+  {% endif %}
+
+  <table class="tabla tabla-reparto" style="margin-top:12px">
+    <thead><tr><th>Actividad</th><th>Hoy la lleva</th><th>Cambiar a</th></tr></thead>
+    <tbody>
+    {% for f in cob.filas %}
+    <tr class="{{ 'sin-resp' if f.estado == 'sin_responsable' else ('doble' if f.estado == 'doble' else '') }}">
+      <td><a href="/ui/actividades/{{ f.actividad.codigo }}">{{ f.actividad.codigo }}</a> — {{ f.actividad.descripcion }}
+        {% if f.actividad.es_critica %}<span class="tag crit">crítica</span>{% endif %}</td>
+      <td>
+        {% set nombres = f.titulares|map(attribute='persona')|unique|list %}
+        {% if f.estado == 'sin_responsable' %}<span class="tag crit">sin responsable</span>{% if f.cedida %} <span class="meta">cedida, nadie la tomó</span>{% endif %}
+        {% elif f.estado == 'del_puesto' %}<span class="tag ok">titular</span> <span class="meta">{{ nombres|join(', ') if nombres|length < 3 else nombres|length ~ ' personas' }}</span>
+        {% elif f.estado == 'trasladada' %}<span class="tag warn">{{ 'cedida' if f.cedida else 'suelta' }}</span> {{ nombres|join(', ') }}
+        {% else %}<span class="tag warn">doble cobertura</span> <span class="meta">{{ nombres|join(', ') }}</span>{% endif %}
+      </td>
+      <td>
+        <input type="hidden" name="actividad_id" value="{{ f.actividad.id }}">
+        <input type="hidden" name="planta_id" value="{{ planta_id or '' }}">
+        <input type="hidden" name="etapa" value="{{ etapa or '' }}">
+        {% set unica = (f.titulares|map(attribute='persona_id')|unique|list) %}
+        <select name="persona_id" hx-post="/ui/reparto/{{ puesto.codigo }}/mover" hx-include="closest tr"
+                hx-target="#reparto" hx-swap="outerHTML" hx-trigger="change">
+          <option value="" {% if f.estado != 'trasladada' %}selected{% endif %}>
+            {% if cob.titulares_puesto %}Titular del puesto{% if cob.titulares_puesto|length <= 2 %} ({{ cob.titulares_puesto|map(attribute='persona')|join(', ') }}){% endif %}{% else %}— sin responsable —{% endif %}
+          </option>
+          {% for p in personas %}<option value="{{ p.id }}" {% if f.estado == 'trasladada' and unica|length == 1 and unica[0] == p.id %}selected{% endif %}>{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+        </select>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3" class="empty">Este puesto no tiene actividades cargadas.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

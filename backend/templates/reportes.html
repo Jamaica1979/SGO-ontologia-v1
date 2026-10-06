@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Reportes{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Reportes</h2>
+  <p class="meta">Para ver cómo va quedando la reestructuración y llevarla a quienes participan.</p>
+
+  <div class="row">
+    <div class="main">
+      <div><a href="/ui/reportes/personas"><strong>Asignación por persona</strong></a></div>
+      <div class="meta">Qué actividades lleva cada persona: las de su puesto, las que recibió de otros puestos y las que cedió. Se descarga a Excel, y cada ficha tiene su PDF de reestructuración.</div>
+    </div>
+    <a href="/ui/reportes/personas.xlsx" class="btn">Excel</a>
+  </div>
+  <div class="row">
+    <div class="main">
+      <div><a href="/ui/reportes/cobertura"><strong>Cobertura de actividades por puesto</strong></a></div>
+      <div class="meta">Qué puestos y actividades están cubiertos, cuáles las lleva el titular, cuáles otra persona y cuáles no las lleva nadie.</div>
+    </div>
+    <a href="/ui/reportes/cobertura.xlsx" class="btn">Excel</a>
+  </div>
+  <div class="row">
+    <div class="main">
+      <div><a href="/ui/organigrama"><strong>Organigrama</strong></a></div>
+      <div class="meta">Teórico (el del manual) o real (quién ocupa cada puesto hoy), por planta. Se exporta a PDF.</div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="main">
+      <div><a href="/ui/reporte/pdf" target="_blank"><strong>Reporte mensual de indicadores</strong></a></div>
+      <div class="meta">Todos los KPI del período, en el formato de la reunión de Dirección (PDF).</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

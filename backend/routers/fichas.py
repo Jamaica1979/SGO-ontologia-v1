@@ -31,7 +31,9 @@ def ficha_persona(persona_id: int, db: Session = Depends(get_db)):
     actividad_ids = set()
     for a in asigs:
         if a.puesto_codigo:
-            actividad_ids |= set(r[0] for r in db.query(m.Actividad.id).filter(m.Actividad.puesto_codigo == a.puesto_codigo))
+            ids_puesto = set(r[0] for r in db.query(m.Actividad.id).filter(m.Actividad.puesto_codigo == a.puesto_codigo))
+            ids_puesto -= set(r[0] for r in db.query(m.ActividadCedida.actividad_id).filter(m.ActividadCedida.asignacion_id == a.id))
+            actividad_ids |= ids_puesto
         if a.perfil_id:
             actividad_ids |= set(r[0] for r in db.query(m.PerfilActividad.actividad_id).filter(m.PerfilActividad.perfil_id == a.perfil_id))
     pendientes = []

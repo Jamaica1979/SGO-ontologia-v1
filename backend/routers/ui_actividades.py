@@ -51,10 +51,11 @@ def ver_ficha(codigo: str, request: Request, db: Session = Depends(get_db)):
 
     responsables = []
     activas = db.query(m.Asignacion).filter(m.Asignacion.estado.in_(["activa", "transicion"])).all()
+    cedidas = set((r.asignacion_id, r.actividad_id) for r in db.query(m.ActividadCedida))
     for asig in activas:
         cubre = False
         if asig.puesto_codigo == a.puesto_codigo and a.puesto_codigo:
-            cubre = True
+            cubre = (asig.id, a.id) not in cedidas   # si el titular la cedió, no la lleva él
         elif asig.perfil_id:
             if db.query(m.PerfilActividad).filter(m.PerfilActividad.perfil_id == asig.perfil_id, m.PerfilActividad.actividad_id == a.id).first():
                 cubre = True

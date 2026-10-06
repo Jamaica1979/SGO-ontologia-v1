@@ -1,0 +1,43 @@
+{# Qué lleva una persona: lo propio de su puesto, lo recibido de otros puestos y lo que cedió. Recibe `a_cargo` (reparto.resumen_persona). #}
+{% macro linea(a) %}<div class="act"><a href="/ui/actividades/{{ a.codigo }}">{{ a.codigo }}</a> — {{ a.descripcion }}{% if a.es_critica %} <span class="tag crit">crítica</span>{% endif %}{% if a.frecuencia %} <span class="meta">· {{ a.frecuencia }}</span>{% endif %}</div>{% endmacro %}
+
+{% if a_cargo.n_total or a_cargo.n_cedidas %}
+<p class="resumen-a-cargo">
+  <b>{{ a_cargo.n_total }}</b> actividad{{ "" if a_cargo.n_total == 1 else "es" }} a cargo
+  <span class="meta">({{ a_cargo.n_propias }} de su puesto{% if a_cargo.n_recibidas %} + {{ a_cargo.n_recibidas }} recibida{{ "" if a_cargo.n_recibidas == 1 else "s" }} de otros puestos{% endif %})</span>
+  {% if a_cargo.n_criticas %}· <span class="tag crit">{{ a_cargo.n_criticas }} crítica{{ "" if a_cargo.n_criticas == 1 else "s" }}</span>{% endif %}
+  {% if a_cargo.n_cedidas %}· <span class="tag warn">{{ a_cargo.n_cedidas }} cedida{{ "" if a_cargo.n_cedidas == 1 else "s" }} a otras personas</span>{% endif %}
+</p>
+
+{% for b in a_cargo.bloques_propios %}
+<details class="bloque" {% if abrir|default(true) %}open{% endif %}>
+  <summary>
+    <strong>{{ b.puesto_codigo }}</strong> — {{ b.puesto_nombre }}
+    <span class="meta">· {{ b.planta }}{% if b.etapa and b.etapa != 'sin_etapa' %} · {{ b.etapa }}{% endif %} · lleva {{ b.propias|length }} de {{ b.total_puesto }}</span>
+  </summary>
+  {% for a in b.propias %}{{ linea(a) }}{% else %}<p class="empty">No lleva ninguna actividad propia de este puesto.</p>{% endfor %}
+  {% if b.cedidas %}
+  <div class="cedidas">
+    <div class="meta" style="margin:8px 0 4px"><b>Cedidas</b> — siguen siendo de este puesto, pero las lleva otra persona
+      · <a href="/ui/reparto/{{ b.puesto_codigo }}">ver reparto del puesto</a></div>
+    {% for c in b.cedidas %}
+    <div class="act cedida"><a href="/ui/actividades/{{ c.actividad.codigo }}">{{ c.actividad.codigo }}</a> — {{ c.actividad.descripcion }}
+      {% if c.a_cargo_de %}<span class="tag ok">la lleva {{ c.a_cargo_de|join(', ') }}</span>{% else %}<span class="tag crit">sin cubrir</span>{% endif %}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</details>
+{% endfor %}
+
+{% for b in a_cargo.bloques_recibidos %}
+<details class="bloque recibido" {% if abrir|default(true) %}open{% endif %}>
+  <summary>
+    Recibidas de <strong>{{ b.puesto_codigo or '—' }}</strong> — {{ b.puesto_nombre }}
+    <span class="meta">· {{ b.actividades|length }} actividad{{ "" if b.actividades|length == 1 else "es" }}{% if b.titulares %} · titular del puesto: {{ b.titulares|join(', ') }}{% endif %}</span>
+  </summary>
+  {% for a in b.actividades %}{{ linea(a) }}{% endfor %}
+</details>
+{% endfor %}
+{% else %}
+<p class="empty">Todavía no tiene actividades a cargo.</p>
+{% endif %}

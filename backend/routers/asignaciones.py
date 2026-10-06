@@ -9,9 +9,15 @@ router = APIRouter(prefix="/api/asignaciones", tags=["Asignacion"], dependencies
 
 # ───────────────────────── helpers compartidos por las Actions ─────────────────────────
 
-def actividades_de_asignacion(db: Session, puesto_codigo, perfil_id):
+def actividades_de_asignacion(db: Session, puesto_codigo, perfil_id, asignacion_id=None):
+    """Actividades que una asignación cubre de verdad. Para un Puesto son todas las
+    suyas MENOS las cedidas a otra persona (Opción A) — por eso hay que pasar
+    asignacion_id cuando se la conoce; sin él se devuelve el puesto completo."""
     if puesto_codigo:
-        return set(r[0] for r in db.query(m.Actividad.id).filter(m.Actividad.puesto_codigo == puesto_codigo, m.Actividad.activo == 1))
+        ids = set(r[0] for r in db.query(m.Actividad.id).filter(m.Actividad.puesto_codigo == puesto_codigo, m.Actividad.activo == 1))
+        if asignacion_id:
+            ids -= set(r[0] for r in db.query(m.ActividadCedida.actividad_id).filter(m.ActividadCedida.asignacion_id == asignacion_id))
+        return ids
     if perfil_id:
         return set(r[0] for r in db.query(m.PerfilActividad.actividad_id).filter(m.PerfilActividad.perfil_id == perfil_id))
     return set()
@@ -44,7 +50,7 @@ def conflictos_exclusividad(db: Session, planta_id, actividad_ids, etapa=None, e
             continue
         if etapa and a.etapa and etapa != a.etapa:
             continue  # misma planta, línea de producción distinta — no choca
-        cubiertas = actividades_de_asignacion(db, a.puesto_codigo, a.perfil_id)
+        cubiertas = actividades_de_asignacion(db, a.puesto_codigo, a.perfil_id, a.id)
         choque = cubiertas & actividad_ids
         if choque:
             codigos = [c[0] for c in db.query(m.Actividad.codigo).filter(m.Actividad.id.in_(choque))]
@@ -67,6 +73,32 @@ def get_or_create_perfil_personal(db: Session, persona_id: int, etapa=None):
     db.add(perfil)
     db.flush()  # para tener perfil.id sin cerrar la transacción
     return perfil
+
+
+def asignaciones_vigentes_de_puesto(db: Session, puesto_codigo, planta_id, etapa=None):
+    q = db.query(m.Asignacion).filter(m.Asignacion.puesto_codigo == puesto_codigo, m.Asignacion.planta_id == planta_id,
+                                       m.Asignacion.estado.in_(["activa", "transicion"]))
+    if etapa:
+        q = q.filter(m.Asignacion.etapa == etapa)
+    return q.all()
+
+
+def cesiones_de(db: Session, asignaciones):
+    """Unión de las actividades cedidas en un conjunto de asignaciones. Cuando un
+    puesto cambia de titular, esas cesiones se heredan: la actividad sigue en manos
+    de quien ya la lleva, el nuevo titular recibe el puesto menos esas actividades."""
+    ids = [a.id for a in asignaciones]
+    if not ids:
+        return set()
+    return set(r[0] for r in db.query(m.ActividadCedida.actividad_id).filter(m.ActividadCedida.asignacion_id.in_(ids)))
+
+
+def heredar_cesiones(db: Session, nueva_asignacion, actividad_ids):
+    for aid in actividad_ids:
+        db.add(m.ActividadCedida(asignacion_id=nueva_asignacion.id, actividad_id=aid))
+    if actividad_ids:
+        log_historial(db, "actividades_cedidas", nueva_asignacion.id, "HeredarCesiones",
+                      despues={"actividad_ids": sorted(actividad_ids)})
 
 
 # ───────────────────────── lectura ─────────────────────────
@@ -127,7 +159,9 @@ def actualizar(asignacion_id: int, body: dict, permitir_conflicto: bool = False,
     if bool(puesto_codigo) == bool(perfil_id):
         raise HTTPException(400, "La asignación va a un Puesto formal O a un Perfil — exactamente uno de los dos.")
 
-    cubiertas = actividades_de_asignacion(db, puesto_codigo, perfil_id)
+    cambia_puesto = puesto_codigo != a.puesto_codigo
+    # las cesiones pertenecen al puesto original: si la asignación pasa a otro puesto, no aplican
+    cubiertas = actividades_de_asignacion(db, puesto_codigo, perfil_id, None if cambia_puesto else asignacion_id)
     scope_planta = None if es_sede_unica(db, puesto_codigo=puesto_codigo) else body.get("planta_id", a.planta_id)
     conflictos = conflictos_exclusividad(db, scope_planta, cubiertas, etapa=body.get("etapa", a.etapa),
                                           excluir_asignacion_id=asignacion_id, excluir_persona_id=body.get("persona_id", a.persona_id))
@@ -136,6 +170,8 @@ def actualizar(asignacion_id: int, body: dict, permitir_conflicto: bool = False,
                                    "conflictos": conflictos})
 
     antes = to_dict(a)
+    if cambia_puesto:
+        db.query(m.ActividadCedida).filter(m.ActividadCedida.asignacion_id == a.id).delete()
     for campo in ("puesto_codigo", "perfil_id", "planta_id", "etapa", "estado", "fecha_inicio", "fecha_fin_estimada", "condicion_salida"):
         if campo in body:
             setattr(a, campo, body[campo])
@@ -151,9 +187,12 @@ def finalizar_asignacion(asignacion_id: int, db: Session = Depends(get_db)):
     a = db.query(m.Asignacion).get(asignacion_id)
     if not a:
         raise HTTPException(404, "Asignación no encontrada")
+    from reparto import archivar_perfil_si_huerfano
     antes = to_dict(a)
     a.estado = "finalizada"
     log_historial(db, "asignaciones", a.id, "FinalizarAsignacion", antes=antes)
+    db.flush()
+    archivar_perfil_si_huerfano(db, a)
     db.commit()
     return {"message": "Asignación finalizada"}
 
@@ -165,18 +204,16 @@ def reasignar_puesto(body: dict, permitir_conflicto: bool = False, db: Session =
     puesto_codigo, planta_id, etapa = body["puesto_codigo"], body["planta_id"], body.get("etapa")
     actividad_ids = set(r[0] for r in db.query(m.Actividad.id).filter(m.Actividad.puesto_codigo == puesto_codigo))
     scope_planta = None if es_sede_unica(db, puesto_codigo=puesto_codigo) else planta_id
-    conflictos = [c for c in conflictos_exclusividad(db, scope_planta, actividad_ids, etapa=etapa,
+    anteriores = asignaciones_vigentes_de_puesto(db, puesto_codigo, planta_id, etapa)
+    heredadas = cesiones_de(db, anteriores)  # ya las lleva otra persona: no son conflicto
+    conflictos = [c for c in conflictos_exclusividad(db, scope_planta, actividad_ids - heredadas, etapa=etapa,
                                                        excluir_persona_id=body.get("persona_id_nuevo"))
                   if c["puesto_codigo"] != puesto_codigo]
     if conflictos and not permitir_conflicto:
         raise HTTPException(409, {"mensaje": "Otras actividades de este puesto ya tienen responsable.", "conflictos": conflictos})
 
-    q = db.query(m.Asignacion).filter(m.Asignacion.puesto_codigo == puesto_codigo, m.Asignacion.planta_id == planta_id,
-                                       m.Asignacion.estado.in_(["activa", "transicion"]))
-    if etapa:
-        q = q.filter(m.Asignacion.etapa == etapa)
     finalizadas = []
-    for a in q.all():
+    for a in anteriores:
         a.estado = "finalizada"
         log_historial(db, "asignaciones", a.id, "ReasignarPuesto (finaliza anterior)")
         finalizadas.append(a.id)
@@ -185,6 +222,7 @@ def reasignar_puesto(body: dict, permitir_conflicto: bool = False, db: Session =
                           etapa=etapa, estado="activa", fecha_inicio=body.get("fecha_inicio"))
     db.add(nueva)
     db.flush()
+    heredar_cesiones(db, nueva, heredadas)
     log_historial(db, "asignaciones", nueva.id, "ReasignarPuesto (nueva)", despues=body)
     db.commit()
     return {"message": "Puesto reasignado", "asignaciones_finalizadas": finalizadas, "conflictos_aceptados": conflictos or None}
@@ -204,20 +242,41 @@ def asignar_actividad_suelta(body: dict, permitir_conflicto: bool = False, db: S
         raise HTTPException(409, {"mensaje": "Alguna de estas actividades ya tiene responsable activo en esta planta/etapa.",
                                    "conflictos": conflictos})
 
-    perfil = get_or_create_perfil_personal(db, body["persona_id"], body.get("etapa"))
-    ya_asignada = db.query(m.Asignacion).filter(m.Asignacion.persona_id == body["persona_id"], m.Asignacion.perfil_id == perfil.id,
-                                                 m.Asignacion.planta_id == body["planta_id"],
-                                                 m.Asignacion.estado.in_(["activa", "transicion"])).first()
-    if not ya_asignada:
-        nueva = m.Asignacion(persona_id=body["persona_id"], perfil_id=perfil.id, planta_id=body["planta_id"],
-                              etapa=body.get("etapa"), estado="activa")
-        db.add(nueva)
-        db.flush()
-        log_historial(db, "asignaciones", nueva.id, "AsignarActividadSuelta (nueva cobertura)", despues=body)
-
-    existentes = set(r[0] for r in db.query(m.PerfilActividad.actividad_id).filter(m.PerfilActividad.perfil_id == perfil.id))
-    for aid in actividad_ids - existentes:
-        db.add(m.PerfilActividad(perfil_id=perfil.id, actividad_id=aid))
-    log_historial(db, "perfil_actividades", perfil.id, "AsignarActividadSuelta", despues={"actividad_ids": list(actividad_ids)})
+    from reparto import asignar_a_perfil_personal  # import diferido: reparto.py importa de este módulo
+    perfil = asignar_a_perfil_personal(db, body["persona_id"], body["planta_id"], body.get("etapa"), actividad_ids)
     db.commit()
     return {"message": "Actividades asignadas", "perfil_id": perfil.id, "conflictos_aceptados": conflictos or None}
+
+
+# ───────────────────────── Actions de reparto (Opción A) ─────────────────────────
+
+@router.post("/trasladar-actividades")
+def trasladar_actividades_api(body: dict, db: Session = Depends(get_db)):
+    """Traslada actividades a una persona SIN doble cobertura: si las llevaba el
+    titular de un puesto, queda registrada la cesión (el puesto sigue entero); si las
+    llevaba otra persona vía perfil, se le quitan. body: actividad_ids, persona_id,
+    planta_id (opcional: se deduce), etapa (opcional)."""
+    from reparto import trasladar_actividades, planta_por_defecto
+    ids = set(body.get("actividad_ids") or [])
+    if not ids or not body.get("persona_id"):
+        raise HTTPException(400, "Faltan actividad_ids y/o persona_id.")
+    persona = db.query(m.Persona).get(body["persona_id"])
+    if not persona or not persona.activo:
+        raise HTTPException(404, "Persona no encontrada o dada de baja.")
+    planta_id = body.get("planta_id") or planta_por_defecto(db, persona.id)
+    res = trasladar_actividades(db, ids, persona.id, planta_id, body.get("etapa"))
+    db.commit()
+    return {"message": "Actividades trasladadas", **res}
+
+
+@router.post("/devolver-actividades")
+def devolver_actividades_api(body: dict, db: Session = Depends(get_db)):
+    """Deshace traslados: las actividades vuelven al titular del puesto (o quedan
+    sin responsable si el puesto está vacante). body: actividad_ids, planta_id, etapa."""
+    from reparto import devolver_a_titular
+    ids = set(body.get("actividad_ids") or [])
+    if not ids:
+        raise HTTPException(400, "Falta actividad_ids.")
+    res = devolver_a_titular(db, ids, body.get("planta_id"), body.get("etapa"))
+    db.commit()
+    return {"message": "Actividades devueltas al titular", **res}
