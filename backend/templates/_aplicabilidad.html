@@ -1,0 +1,18 @@
+{# Variables: filas (de filas_aplicabilidad), puesto_codigo | actividad_id, volver #}
+{% for f in filas %}
+<form method="post" action="/ui/aplicabilidad/guardar" 
+      style="display:flex;flex-direction:row;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border, #e2e8f0)">
+  <input type="hidden" name="planta_id" value="{{ f.planta.id }}">
+  {% if puesto_codigo %}<input type="hidden" name="puesto_codigo" value="{{ puesto_codigo }}">{% else %}<input type="hidden" name="actividad_id" value="{{ actividad_id }}">{% endif %}
+  <input type="hidden" name="volver" value="{{ volver }}">
+  <b style="min-width:190px">{{ f.planta.nombre }}</b>
+  <select name="modo" style="min-width:300px;padding:6px 8px;border:1px solid var(--border);border-radius:6px">
+    <option value="aplica" {{ 'selected' if f.modo == 'aplica' }}>Aplica</option>
+    {% if puesto_codigo %}<option value="se_reparte" {{ 'selected' if f.modo == 'se_reparte' }}>No existe como puesto: se reparten sus actividades</option>{% endif %}
+    <option value="no_aplica" {{ 'selected' if f.modo == 'no_aplica' }}>No aplica: no se necesita</option>
+  </select>
+  <input type="text" name="motivo" value="{{ f.motivo or '' }}" placeholder="Motivo (ej.: tarea de planta remota)" style="flex:1;min-width:200px;padding:6px 8px;border:1px solid var(--border);border-radius:6px">
+  <button type="submit" class="btn">Guardar</button>
+  {% if f.heredada %}<span class="meta" style="flex-basis:100%">El puesto {{ f.heredada.puesto_codigo }} {{ 'se reparte' if f.heredada.se_reparte else 'no aplica' }} en esta planta, y esta actividad lo hereda.</span>{% endif %}
+</form>
+{% endfor %}

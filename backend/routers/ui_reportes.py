@@ -184,7 +184,8 @@ def reporte_cobertura_xlsx(planta_id: int = None, solo_pendientes: bool = False,
     cob, sin = [], []
     for f in filas:
         etapa = f["etapa"] if f["etapa"] and f["etapa"] != "sin_etapa" else ""
-        cob.append([f["puesto_codigo"], f["puesto_nombre"], f["planta_nombre"], etapa, ESTADO_TXT.get(f["estado"], f["estado"]),
+        cob.append([f["puesto_codigo"], f["puesto_nombre"], f["planta_nombre"], etapa,
+                    ESTADO_TXT.get(f["estado"], f["estado"]) + (" — el puesto no existe en esta planta: se reparten sus actividades" if f.get("se_reparte") else ""),
                     f["n_actividades"], f["n_por_titular"], f["n_cedidas"], f["n_por_suelta"], f["n_sin_cubrir"],
                     ", ".join(r["persona"] + (" (perfil)" if r["via"] == "perfil" else "") for r in f["responsables"]) or "—"])
         for a in f["actividades_sin_asignar"]:

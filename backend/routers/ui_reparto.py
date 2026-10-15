@@ -12,6 +12,7 @@ from auth import verificar_acceso
 from reparto import (cobertura_de_puesto, trasladar_actividades, devolver_a_titular, planta_por_defecto,
                      impacto_de_finalizar, finalizar_con_reasignacion, SIN_RESPONSABLE)
 import models as m
+from util_texto import personas_ordenadas
 
 router = APIRouter(prefix="/ui", dependencies=[Depends(verificar_acceso)])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
@@ -41,7 +42,7 @@ def _ctx_reparto(db: Session, puesto_codigo: str, planta_id=None, etapa=None):
         "puesto": puesto, "por_planta": por_planta, "plantas": plantas, "planta_id": planta_id,
         "requiere_etapa": puesto_codigo in ("PRD-04", "PRD-05"), "etapa": etapa,
         "cob": cob, "etapas": ETAPAS,
-        "personas": db.query(m.Persona).filter(m.Persona.activo == 1).order_by(m.Persona.apellido, m.Persona.nombre).all(),
+        "personas": personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1)),
     }
 
 
@@ -91,8 +92,7 @@ def _pagina_impacto(request, db, asignaciones, persona_que_sale, titulo, intro, 
     return templates.TemplateResponse(request, "impacto_salida.html", {
         "titulo": titulo, "intro": intro, "asignaciones": asignaciones, "filas": filas,
         "accion_url": accion_url, "texto_boton": texto_boton, "volver_url": volver_url,
-        "personas": db.query(m.Persona).filter(m.Persona.activo == 1, m.Persona.id != persona_que_sale.id)
-                       .order_by(m.Persona.apellido, m.Persona.nombre).all(),
+        "personas": personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1, m.Persona.id != persona_que_sale.id)),
     })
 
 

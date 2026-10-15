@@ -8,6 +8,12 @@
     {% if cob.n_doble %}<div class="kpi warn"><b>{{ cob.n_doble }}</b><span>con doble cobertura</span></div>{% endif %}
   </div>
 
+  {% if cob.ex_puesto %}
+  <p class="aviso-ok" style="background:var(--warn-bg, #fffbeb)">En esta planta el puesto <b>no existe</b>{% if cob.ex_puesto.motivo %} ({{ cob.ex_puesto.motivo }}){% endif %}: sus actividades se reparten entre otras personas.</p>
+  {% endif %}
+  {% if cob.no_aplican %}
+  <p class="meta">No aplican en esta planta y no se cuentan: {% for a in cob.no_aplican %}{{ a.codigo }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+  {% endif %}
   <p class="meta" style="margin:10px 0">
     Titular{{ "" if cob.titulares_puesto|length == 1 else "es" }} del puesto{% if por_planta %} en esta planta{% endif %}:
     {% for t in cob.titulares_puesto %}<a href="/ui/personas/{{ t.persona_id }}">{{ t.persona }}</a>{% if not loop.last %}, {% endif %}{% else %}<b style="color:var(--crit)">puesto vacante</b>{% endfor %}
@@ -21,7 +27,7 @@
     <span style="font-size:13px">Asignar las <b>{{ cob.n_sin_responsable }}</b> actividades que hoy no lleva nadie a:</span>
     <select name="persona_id" required>
       <option value="">— elegir persona —</option>
-      {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+      {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre_completo }}</option>{% endfor %}
     </select>
     <button type="submit" class="primary">Asignar</button>
   </form>
@@ -51,7 +57,7 @@
           <option value="" {% if f.estado != 'trasladada' %}selected{% endif %}>
             {% if cob.titulares_puesto %}Titular del puesto{% if cob.titulares_puesto|length <= 2 %} ({{ cob.titulares_puesto|map(attribute='persona')|join(', ') }}){% endif %}{% else %}— sin responsable —{% endif %}
           </option>
-          {% for p in personas %}<option value="{{ p.id }}" {% if f.estado == 'trasladada' and unica|length == 1 and unica[0] == p.id %}selected{% endif %}>{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+          {% for p in personas %}<option value="{{ p.id }}" {% if f.estado == 'trasladada' and unica|length == 1 and unica[0] == p.id %}selected{% endif %}>{{ p.nombre_completo }}</option>{% endfor %}
         </select>
       </td>
     </tr>

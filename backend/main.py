@@ -29,7 +29,7 @@ from routers import (plantas, puestos, personas, actividades, convenios, mecanis
                      dashboard, ui_personas, ui_puestos, ui_plantas, ui_dashboard, ui_listados,
                      ui_actividades, ui_mecanismos, ui_procedimientos, ui_indicadores, ui_historial, ui_reporte,
                      organigrama, ui_organigrama, formularios, ui_formularios, procedimientos, indicadores,
-                     ui_reparto, ui_reportes)
+                     ui_reparto, ui_reportes, ui_aplicabilidad, ui_inicio)
 
 app = FastAPI(title="SGO Cantera Eldorado v3 — por objetos")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -41,13 +41,13 @@ for r in (plantas.router, puestos.router, personas.router, actividades.router, c
           ui_actividades.router, ui_mecanismos.router, ui_procedimientos.router, ui_indicadores.router,
           ui_historial.router, ui_reporte.router, organigrama.router, ui_organigrama.router,
           formularios.router, ui_formularios.router, procedimientos.router, indicadores.router,
-          ui_reparto.router, ui_reportes.router):
+          ui_reparto.router, ui_reportes.router, ui_aplicabilidad.router, ui_inicio.router):
     app.include_router(r)
 
 
 @app.get("/")
 def home():
-    return RedirectResponse("/ui/dashboard")
+    return RedirectResponse("/ui/inicio")
 
 
 @app.get("/api/health")

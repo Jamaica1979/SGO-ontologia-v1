@@ -1,0 +1,12 @@
+{% macro grupo(titulo, lista, color, abierto, mostrar_planta, accion) %}
+<details class="bloque" {{ 'open' if abierto }}>
+  <summary><b style="{{ 'color:var(' + color + ')' if color }}">{{ titulo }}</b> <span class="tag {{ 'crit' if lista and abierto else 'off' }}">{{ lista|length }}</span></summary>
+  {% for f in lista %}
+    {% with mostrar_puesto=true, mostrar_planta=mostrar_planta, accion_url=accion %}{% include "_cobertura_fila.html" %}{% endwith %}
+  {% else %}<p class="empty">Nada en esta categoría.</p>{% endfor %}
+</details>
+{% endmacro %}
+{{ grupo("Urgente — plantas en operación", pendientes.urgente_plantas_activas, "--crit", true, true, "/ui/dashboard/asignar") }}
+{{ grupo("Antes de habilitar la planta", pendientes.antes_de_habilitar_planta, "--warn", false, true, "/ui/dashboard/asignar") }}
+{{ grupo("Sede única sin cubrir", pendientes.sede_unica_sin_cubrir, none, false, false, "/ui/dashboard/asignar") }}
+{{ grupo("Dato por completar — no es un hueco de cobertura", pendientes.dato_por_completar, none, false, true, none) }}

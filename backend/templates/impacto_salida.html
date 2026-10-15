@@ -24,7 +24,7 @@
       <span>Asignar todas a:</span>
       <select id="todas-a" onchange="aplicarATodas(this.value)">
         <option value="">— elegir —</option>
-        {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+        {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre_completo }}</option>{% endfor %}
       </select>
     </div>
     <table class="tabla">
@@ -39,7 +39,7 @@
           <select class="dest" name="dest_{{ f.actividad.id }}">
             <option value="">Dejar sin cubrir</option>
             {% if f.devolvible_a %}<option value="__titular__">Devolver al titular del puesto ({{ f.devolvible_a|join(', ') }})</option>{% endif %}
-            {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+            {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre_completo }}</option>{% endfor %}
           </select>
         </td>
       </tr>

@@ -100,6 +100,8 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
         puestos_q = puestos_q.filter(m.Puesto.codigo == puesto_codigo)
     puestos = puestos_q.all()
     plantas = db.query(m.Planta).all()
+    from aplicabilidad import mapa_exclusiones
+    act_excl, puestos_excl = mapa_exclusiones(db)  # aplicabilidad por planta (v3.7)
 
     activas = db.query(m.Asignacion).filter(m.Asignacion.estado.in_(["activa", "transicion"])).all()
     cedidas_por_asig = {}
@@ -115,7 +117,7 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
 
     filas = []
     for p in puestos:
-        act_puesto = {a.id: a for a in db.query(m.Actividad).filter(m.Actividad.puesto_codigo == p.codigo, m.Actividad.activo == 1)}
+        act_puesto_total = {a.id: a for a in db.query(m.Actividad).filter(m.Actividad.puesto_codigo == p.codigo, m.Actividad.activo == 1)}
         if p.cardinalidad_esperada == "una_por_planta_activa":
             scopes = [(pl, e) for pl in plantas for e in
                       (("primaria", "secundaria", "sin_etapa") if p.codigo in ("PRD-04", "PRD-05") else (None,))]
@@ -126,6 +128,12 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
             pl_id = pl.id if pl else None
             if planta_id and pl_id and pl_id != planta_id:
                 continue
+            ex_puesto = puestos_excl.get((p.codigo, pl_id)) if pl_id else None
+            if ex_puesto and not ex_puesto["se_reparte"]:
+                continue  # el puesto no existe en esta planta ni hace falta cubrir sus actividades
+            act_puesto = {i: a for i, a in act_puesto_total.items() if not (pl_id and i in act_excl.get(pl_id, ()))}
+            if not act_puesto and act_puesto_total:
+                continue  # todo lo del puesto fue marcado como "no aplica" en esta planta
 
             def matchea(a):
                 if pl_id is not None and a.planta_id != pl_id:
@@ -137,6 +145,8 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
                 return True
 
             directas = [a for a in activas if a.puesto_codigo == p.codigo and matchea(a)]
+            if ex_puesto:  # se_reparte: no hay titular posible; las actividades se cubren sólo por perfil
+                directas = []
             if etapa == "sin_etapa" and not directas:
                 continue
 
@@ -189,6 +199,8 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
                 "n_actividades": len(act_puesto),
                 "n_por_titular": n_por_titular, "n_cedidas": n_cedidas, "n_por_suelta": n_por_suelta,
                 "n_sin_cubrir": len(acts_sin),
+                "se_reparte": bool(ex_puesto),
+                "motivo_no_aplica": ex_puesto["motivo"] if ex_puesto else None,
                 "actividades_sin_asignar": [{"id": a.id, "codigo": a.codigo, "descripcion": a.descripcion, "es_critica": bool(a.es_critica)} for a in acts_sin],
             })
     return filas

@@ -11,6 +11,8 @@
     <input type="text" name="nombre" required value="{{ v.nombre if v else '' }}">
     <label>Apellido</label>
     <input type="text" name="apellido" required value="{{ v.apellido if v else '' }}">
+    <label>Apodo (como se lo nombra en el trabajo, ej. Tiki)</label>
+    <input type="text" name="apodo" value="{{ v.apodo if v and v.apodo else '' }}">
     <label>Legajo</label>
     <input type="text" name="legajo" value="{{ v.legajo if v else '' }}">
     <label>CUIT</label>
@@ -21,8 +23,19 @@
       <option value="{{ opt }}" {% if (v.estado_legajo if v else 'completo') == opt %}selected{% endif %}>{{ opt }}</option>
       {% endfor %}
     </select>
-    <label>Antigüedad (años)</label>
+    <label>Fecha de ingreso</label>
+    <input type="date" name="fecha_ingreso" value="{{ v.fecha_ingreso if v and v.fecha_ingreso else '' }}">
+    <label>Antigüedad (años) — sólo si no se conoce la fecha de ingreso; con fecha se calcula sola</label>
     <input type="number" step="0.5" name="antiguedad_anos" value="{{ v.antiguedad_anos if v and v.antiguedad_anos is not none else '' }}">
+    <label>Sector (según nómina)</label>
+    <input type="text" name="sector" value="{{ v.sector if v and v.sector else '' }}">
+    <label>Cargo (según nómina)</label>
+    <input type="text" name="cargo_nomina" value="{{ v.cargo_nomina if v and v.cargo_nomina else '' }}">
+    <label>Planta de nómina (donde figura en la planilla de personal)</label>
+    <select name="planta_base_id">
+      <option value="">— Sin dato —</option>
+      {% for pl in plantas %}<option value="{{ pl.id }}" {% if v and v.planta_base_id and (v.planta_base_id|string) == (pl.id|string) %}selected{% endif %}>{{ pl.nombre }}</option>{% endfor %}
+    </select>
     <label>Convenio colectivo</label>
     <select name="convenio_id">
       <option value="">— Sin convenio —</option>

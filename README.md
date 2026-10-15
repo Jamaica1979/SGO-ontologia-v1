@@ -12,7 +12,8 @@ automáticamente desde ahí.
 - Backend organizado por Object Type, con las Actions: `AsignarPersonaAPuesto`, `FinalizarAsignacion`, `ReasignarPuesto`, `AsignarActividadSuelta`, `RegistrarCumplimientoDeMecanismo`, `CargarMedicionDeIndicador`, `ExtinguirRolDeTransicion`, `ConfirmarHabilitacion`
 - **Ocho fichas de objeto**, todas conectadas entre sí por links reales: Persona, Puesto, Planta, Actividad, Mecanismo, Procedimiento, Indicador, Formulario
 - **Listados** de los ocho tipos de objeto, más un **buscador** que cubre personas, puestos, actividades, mecanismos, plantas y formularios
-- **Dashboard** con el resumen general, la bandeja de pendientes priorizada, Alertas y Riesgo de dependencia
+- **Página de inicio** (`/ui/inicio`) con los indicadores clave y accesos agrupados por tema
+- **Dashboard** simplificado: cuatro indicadores arriba y tres secciones plegables que cargan al abrirlas (Pendientes agrupados por urgencia, Alertas, Riesgo de dependencia)
 - **Historial de auditoría**, con pantalla propia (`/ui/historial`) filtrable por tabla
 - **Exportar a PDF**: la ficha de cualquier Puesto, el Reporte mensual de indicadores completo, y el Organigrama (teórico o real, por planta)
 - **Organigrama interactivo** (`/ui/organigrama`): árbol con zoom, paneo y ramas plegables, en dos modos — Teórico (la estructura del manual) y Real (quién ocupa cada puesto hoy, por planta, con las vacantes resaltadas). El PDF se genera sin depender de un navegador en el servidor — el árbol se recalcula en Python puro (`organigrama_svg.py`) y se convierte con svglib, liviano para desplegar en Render
@@ -28,6 +29,16 @@ automáticamente desde ahí.
   - *Reportes* (`/ui/reportes`): detalle por persona (HTML y Excel), tablero de cobertura por puesto (HTML y Excel, con las actividades sin cubrir) y **Ficha de reestructuración en PDF** por persona.
   - *Impacto de una salida*: antes de finalizar una cobertura o dar de baja a una persona se muestran las actividades que quedarían sin responsable y se reasignan en el mismo paso. Nada se borra; un perfil individual sin asignaciones se archiva.
   - *Migración automática*: al arrancar, la app aplica las migraciones pendientes de Alembic.
+- **v3.7 — Personal, báscula, aplicabilidad por planta y formularios con partes** (13 de octubre de 2026), a partir de las reuniones del 1 y 6 de octubre y de la planilla de personal:
+  - *Personas*: 9 altas nuevas y las 34 existentes completadas y corregidas según la planilla (legajo, CUIL, fecha de ingreso, sector, cargo de nómina, planta de nómina, apodo). Campos nuevos en la ficha y el formulario. La antigüedad se calcula sola desde la fecha de ingreso. El listado y los selectores van por **apellido y nombre, sin distinguir tildes**, con el formato «Apellido, Nombre (apodo)».
+  - *ADP-03 absorbe a PRD-07*: ADP-03 pasó a llamarse **Operador de Báscula** (área Comercial, reporta a ADP-01); PRD-07 está dado de baja. **No se renumeró ninguna actividad**: el código ACT-nnn es el identificador estable (las reuniones y los reportes lo citan). ACT-164 a 169 se dieron de baja por duplicar a ACT-092 a 097, ACT-170 pasó a ADP-03 y se creó ACT-171 (enviar el F-03 directo a Administración, sólo Eldorado).
+  - *Aplicabilidad por planta*: por defecto todo aplica en todas las plantas; las excepciones se marcan en la sección «Aplicabilidad por planta» de la ficha de **Puesto** y de **Actividad**. Tres modos: *aplica*, *no existe como puesto: se reparten sus actividades* (caso ADP-02 en Eldorado) y *no aplica: no se necesita*. Lo que no aplica deja de contar como «sin cubrir», no aparece en la ficha de quien ocupa el puesto y el sistema no deja asignar un puesto que no existe en esa planta. Cargadas: ADP-02 en Eldorado, y las ACT-078, 082, 083 y 085 de ADP-01 en Eldorado.
+  - *Formularios con partes*: un formulario puede ser **parte de otro** (F-08.1 Parte de perforación → F-08, que registra el Jefe de Planta). La ficha del padre lista sus partes; la del parte indica a quién alimenta. Cada formulario tiene además un **modelo** (campos, tipo, obligatorio) que se edita como texto, un campo por línea. Cargado el F-08.1 con doble horómetro (máquina y martillo): es una propuesta a validar.
+  - *Ajustes de contenido*: ACT-138 y ACT-141 se registran en el Parte de perforación y no en el F-08; ACT-140 (sobrantes de explosivos) pasó del Perforista al Jefe de Planta; plazo del F-08 a las 9 h del día siguiente (ACT-127 y procedimiento P-07). **Atención**: la «act. 139» del acta de la reunión es la **ACT-141** del sistema.
+  - *Reinicio de asignaciones*: las 36 asignaciones quedaron **finalizadas** (nada se borró; siguen en el Historial) y los perfiles de actividades sueltas se archivaron, para cargar todo a mano desde cero. Guía de trabajo aparte: `Guia_de_carga_de_asignaciones_v3_7.xlsx`.
+- **v3.8 — Página de inicio y dashboard simplificado** (13 de octubre de 2026):
+  - *Inicio*: la raíz (`/`) lleva ahora a `/ui/inicio`, con 4 indicadores (cobertura, pendientes, alertas, riesgos sin respaldo) y cuatro bloques: Estructura de la empresa, Asignación y cobertura, Procesos y control, Seguimiento. El logo y el menú superior vuelven a Inicio.
+  - *Dashboard*: se reemplazó la pantalla larga por una franja de indicadores (cada uno lleva a su sección) y secciones plegables que se cargan sólo al abrirlas. Pendientes se subdivide en Urgente (abierto) y los demás grupos (cerrados). Se puede enlazar directo con `/ui/dashboard?abrir=pendientes|alertas|riesgos`.
 
 **Afuera a propósito:**
 - Comparador de puestos — decisión de Jamaica, cada Puesto ya tiene ficha propia y navegable
@@ -55,10 +66,10 @@ cd backend
 python -m uvicorn main:app --reload --port 8000
 ```
 
-Abrir **http://localhost:8000** — redirige directo al Dashboard.
+Abrir **http://localhost:8000** — abre la página de inicio.
 Usuario/clave: `eldorado` / `cantera2026` (los mismos de siempre; se pueden cambiar con las variables de entorno `ADMIN_USER` / `ADMIN_PASS`).
 
-La base (`cantera.db`) ya viene con el esquema nuevo y los datos migrados — **Importante:** si ya cargaste datos propios en tu `cantera.db` (local o en Render), NO la reemplaces con la del zip: copiá solo el código. La app aplica sola la migración nueva al arrancar; conviene hacer una copia de seguridad antes. No hace falta correr nada de Alembic ni el script de migración para usarlo tal cual.
+La base (`cantera.db`) ya viene con el esquema nuevo y los datos migrados — **Importante (v3.7):** la `cantera.db` de este zip ya trae las personas nuevas y las asignaciones reiniciadas, y tiene que usarse tal cual **esta única vez**. Una vez que el equipo empiece a cargar asignaciones a mano, de ahí en adelante NO se la reemplaza con la de ningún zip: se copia solo el código. La app aplica sola la migración nueva al arrancar; conviene hacer una copia de seguridad antes. No hace falta correr nada de Alembic ni el script de migración para usarlo tal cual.
 
 ## Estructura
 
@@ -68,6 +79,9 @@ app/
     main.py            → arma la app y conecta todos los routers
     models.py           → los 24 Object Types / Junction Objects / Link Types
     database.py          → conexión SQLAlchemy
+    aplicabilidad.py        → regla de qué puestos y actividades aplican en cada planta
+    util_texto.py           → orden alfabético sin tildes
+    scripts/datos_v3_7.py    → migración de datos de la v3.7 (ya aplicada; queda de referencia)
     reparto.py             → servicio de reparto: cesiones, traslados, cobertura por puesto, impacto de salidas
     functions.py          → cálculos que se corren al vuelo (cobertura, riesgo, alertas, semáforo)
     migrar_datos.py        → el script que migró los datos desde cantera_v2_origen.db (ya ejecutado, queda de referencia)
@@ -80,7 +94,7 @@ app/
       asignaciones.py, fichas.py, dashboard.py   → API JSON (/api/...)
       ui_personas.py, ui_puestos.py, ui_plantas.py, ui_actividades.py, ui_mecanismos.py,
       ui_procedimientos.py, ui_indicadores.py, ui_formularios.py,
-      ui_reparto.py, ui_reportes.py, ui_dashboard.py, ui_listados.py, ui_shared.py  → páginas htmx (/ui/...), con
+      ui_reparto.py, ui_reportes.py, ui_aplicabilidad.py, ui_dashboard.py, ui_listados.py, ui_shared.py  → páginas htmx (/ui/...), con
       alta/edición/baja para los 7 objetos principales + Formulario
     templates/          → las páginas y fragmentos htmx
     static/             → CSS y htmx (empaquetado local, no depende de un CDN)
@@ -89,7 +103,8 @@ app/
 
 ## Navegación
 
-- `/ui/dashboard` — resumen general, bandeja de pendientes, alertas, riesgo de dependencia
+- `/ui/inicio` — página de inicio
+- `/ui/dashboard` — indicadores y secciones plegables (`?abrir=pendientes|alertas|riesgos`); resumen general, bandeja de pendientes, alertas, riesgo de dependencia
 - `/ui/organigrama` — árbol interactivo, teórico o real por planta, con zoom y PDF
 - `/ui/listado/{puestos|personas|plantas|actividades|mecanismos|procedimientos|indicadores|formularios}` — listados, con links a cada ficha, botón "+ Nuevo..." y (salvo Formulario) link "Ver también dados de baja"
 - `/ui/personas/{id}`, `/ui/puestos/{codigo}`, `/ui/plantas/{id}`, `/ui/actividades/{codigo}`, `/ui/mecanismos/{codigo}`, `/ui/procedimientos/{codigo}`, `/ui/indicadores/{codigo}` — la ficha de cada objeto, con botones Editar / Dar de baja / Dar de alta

@@ -12,7 +12,8 @@ def listar(activo: bool = True, db: Session = Depends(get_db)):
     q = db.query(m.Persona)
     if activo:
         q = q.filter(m.Persona.activo == 1)
-    return [to_dict(p) for p in q.order_by(m.Persona.apellido).all()]
+    from util_texto import personas_ordenadas
+    return [to_dict(p) for p in personas_ordenadas(q)]
 
 
 @router.get("/{persona_id}")

@@ -1,0 +1,11 @@
+{% for r in riesgos.riesgos %}
+<div class="row">
+  <div class="main">
+    <div><a href="/ui/puestos/{{ r.puesto }}"><strong>{{ r.puesto }}</strong></a> — {{ r.puesto_nombre }}
+      <span class="tag {% if r.en_mitigacion %}warn{% else %}crit{% endif %}">{{ 'en mitigación' if r.en_mitigacion else 'sin respaldo' }}</span>
+    </div>
+    <div class="meta">{{ r.planta }} · <a href="/ui/personas/{{ r.persona_id }}">{{ r.persona }}</a> es la única persona para {{ r.actividades_criticas }} actividades críticas
+      {% if r.respaldo_en_formacion %} · {{ r.respaldo_en_formacion }} en formación como respaldo{% endif %}</div>
+  </div>
+</div>
+{% else %}<p class="empty">Sin dependencias críticas detectadas.</p>{% endfor %}

@@ -1,0 +1,5 @@
+{% for a in alertas %}
+<div class="row"><div class="main">
+  <span class="tag {% if a.nivel == 'rojo' %}crit{% else %}warn{% endif %}">{{ a.tipo }}</span> {{ a.mensaje }}
+</div></div>
+{% else %}<p class="empty">Sin alertas activas.</p>{% endfor %}

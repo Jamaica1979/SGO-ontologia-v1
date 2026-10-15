@@ -10,6 +10,7 @@ from routers.asignaciones import actividades_de_asignacion, es_sede_unica, confl
 from reparto import (actividades_a_cargo, trasladar_actividades, asignar_a_perfil_personal, planta_por_defecto,
                      archivar_perfil_si_huerfano, cobertura_de_puesto, DEL_PUESTO, SIN_RESPONSABLE)
 import models as m
+from util_texto import personas_ordenadas
 
 router = APIRouter(prefix="/ui", dependencies=[Depends(verificar_acceso)])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
@@ -38,7 +39,7 @@ def _ficha_persona_ctx(db: Session, persona_id: int):
     tipos_que_tiene = set(h.tipo_capacitacion_id for h in db.query(m.HabilitacionDePersona).filter(m.HabilitacionDePersona.persona_id == persona_id))
     actividad_ids = set()
     for a in asigs:
-        actividad_ids |= actividades_de_asignacion(db, a.puesto_codigo, a.perfil_id, a.id)
+        actividad_ids |= actividades_de_asignacion(db, a.puesto_codigo, a.perfil_id, a.id, a.planta_id)
     pendientes = []
     if actividad_ids:
         vistos = set()
@@ -67,7 +68,22 @@ def _ficha_persona_ctx(db: Session, persona_id: int):
 
 def _form_persona_ctx(db, persona=None, error=None, valores=None):
     return {"persona": persona, "error": error, "valores": valores,
-            "convenios": db.query(m.ConvenioColectivo).order_by(m.ConvenioColectivo.codigo).all()}
+            "convenios": db.query(m.ConvenioColectivo).order_by(m.ConvenioColectivo.codigo).all(),
+            "plantas": db.query(m.Planta).order_by(m.Planta.id).all()}
+
+
+def _fecha_iso(valor):
+    """Acepta aaaa-mm-dd (campo de fecha del navegador) o dd/mm/aaaa."""
+    valor = (valor or "").strip()
+    if not valor:
+        return None
+    from datetime import datetime
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(valor, fmt).date().isoformat()
+        except ValueError:
+            pass
+    return None
 
 
 # el orden importa: '/personas/nuevo' tiene que registrarse antes que '/personas/{persona_id}'
@@ -79,11 +95,15 @@ def nueva_persona_form(request: Request, db: Session = Depends(get_db)):
 @router.post("/personas", response_class=HTMLResponse)
 def crear_persona(request: Request, db: Session = Depends(get_db),
                    nombre: str = Form(...), apellido: str = Form(...), legajo: str = Form(None),
+                   apodo: str = Form(None), fecha_ingreso: str = Form(None), sector: str = Form(None),
+                   cargo_nomina: str = Form(None), planta_base_id: str = Form(None),
                    cuit: str = Form(None), convenio_id: str = Form(None), antiguedad_anos: str = Form(None),
                    estado_legajo: str = Form("completo"), notas: str = Form(None)):
     p = m.Persona(nombre=nombre, apellido=apellido, legajo=legajo or None, cuit=cuit or None,
                   convenio_id=convenio_id or None, antiguedad_anos=float(antiguedad_anos) if antiguedad_anos else None,
-                  estado_legajo=estado_legajo, notas=notas)
+                  estado_legajo=estado_legajo, notas=notas, apodo=(apodo or "").strip() or None,
+                  fecha_ingreso=_fecha_iso(fecha_ingreso), sector=(sector or "").strip() or None,
+                  cargo_nomina=(cargo_nomina or "").strip() or None, planta_base_id=int(planta_base_id) if planta_base_id else None)
     db.add(p)
     db.flush()
     log_historial(db, "personas", p.id, "CrearPersona", despues=to_dict(p))
@@ -106,6 +126,8 @@ def editar_persona_form(persona_id: int, request: Request, db: Session = Depends
 @router.post("/personas/{persona_id}/editar", response_class=HTMLResponse)
 def editar_persona(persona_id: int, request: Request, db: Session = Depends(get_db),
                     nombre: str = Form(...), apellido: str = Form(...), legajo: str = Form(None),
+                    apodo: str = Form(None), fecha_ingreso: str = Form(None), sector: str = Form(None),
+                   cargo_nomina: str = Form(None), planta_base_id: str = Form(None),
                     cuit: str = Form(None), convenio_id: str = Form(None), antiguedad_anos: str = Form(None),
                     estado_legajo: str = Form("completo"), notas: str = Form(None)):
     p = db.query(m.Persona).get(persona_id)
@@ -114,6 +136,9 @@ def editar_persona(persona_id: int, request: Request, db: Session = Depends(get_
     p.convenio_id = convenio_id or None
     p.antiguedad_anos = float(antiguedad_anos) if antiguedad_anos else None
     p.estado_legajo, p.notas = estado_legajo, notas
+    p.apodo, p.sector, p.cargo_nomina = (apodo or "").strip() or None, (sector or "").strip() or None, (cargo_nomina or "").strip() or None
+    p.fecha_ingreso = _fecha_iso(fecha_ingreso)
+    p.planta_base_id = int(planta_base_id) if planta_base_id else None
     log_historial(db, "personas", p.id, "EditarPersona", antes=antes, despues=to_dict(p))
     db.commit()
     return RedirectResponse(f"/ui/personas/{persona_id}", status_code=303)
@@ -177,7 +202,15 @@ def nueva_asignacion(persona_id: int, request: Request, db: Session = Depends(ge
             "puede_excluir": False,
         })
 
-    cubiertas = actividades_de_asignacion(db, puesto_codigo, None)
+    from aplicabilidad import mensaje_puesto_no_aplica
+    msg = mensaje_puesto_no_aplica(db, puesto_codigo, planta_id)
+    if msg:
+        return templates.TemplateResponse(request, "_conflicto.html", {
+            "persona_id": persona_id, "puesto_codigo": puesto_codigo, "planta_id": planta_id, "etapa": etapa,
+            "conflictos": [{"persona": "—", "puesto_codigo": puesto_codigo, "etapa": None, "actividades_en_conflicto": [msg]}],
+            "puede_excluir": False,
+        })
+    cubiertas = actividades_de_asignacion(db, puesto_codigo, None, None, planta_id)
     scope_planta = None if es_sede_unica(db, puesto_codigo=puesto_codigo) else planta_id
     conflictos = conflictos_exclusividad(db, scope_planta, cubiertas, etapa=etapa, excluir_persona_id=persona_id)
 
@@ -226,7 +259,7 @@ def actividades_de_puesto_origen(persona_id: int, request: Request, puesto_codig
         for f in cobertura_de_puesto(db, puesto_codigo)["filas"]:
             nombres = sorted({t["persona"] for t in f["titulares"]})
             hoy[f["actividad"]["id"]] = (f"{len(nombres)} personas" if len(nombres) >= 3 else ", ".join(nombres)) or None
-        personas = db.query(m.Persona).filter(m.Persona.activo == 1, m.Persona.id != persona_id).order_by(m.Persona.apellido).all()
+        personas = personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1, m.Persona.id != persona_id))
     return templates.TemplateResponse(request, "_actividades_checkboxes.html", {
         "actividades": actividades, "requiere_etapa": requiere_etapa, "puesto_codigo": puesto_codigo,
         "hoy": hoy, "personas": personas,

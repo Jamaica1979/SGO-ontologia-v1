@@ -69,6 +69,7 @@ def ver_ficha(codigo: str, request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "ficha_actividad.html", {
         "actividad": a, "puesto_nombre": puesto.nombre if puesto else None,
         "responsables": responsables, "capacitaciones": caps,
+        "aplicabilidad": __import__("aplicabilidad").filas_aplicabilidad(db, actividad_id=a.id),
     })
 
 

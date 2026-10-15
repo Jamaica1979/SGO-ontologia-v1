@@ -8,6 +8,7 @@ from auth import verificar_acceso
 from functions import calcular_cobertura
 from routers.ui_shared import asignar_o_reasignar
 import models as m
+from util_texto import personas_ordenadas
 
 router = APIRouter(prefix="/ui/plantas", dependencies=[Depends(verificar_acceso)])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
@@ -43,7 +44,7 @@ def _ctx(db: Session, planta_id: int):
     return {
         "planta": pl, "cobertura": cobertura,
         "resumen": {"total": total, "cubiertas": cubiertas, "pct_cobertura": round(100 * cubiertas / total, 1) if total else 0},
-        "personas": db.query(m.Persona).filter(m.Persona.activo == 1).order_by(m.Persona.apellido).all(),
+        "personas": personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1)),
         "plantas": db.query(m.Planta).all(),
     }
 
@@ -103,5 +104,5 @@ def asignar(planta_id: int, request: Request, db: Session = Depends(get_db),
     fila = next((f for f in calcular_cobertura(db, puesto_codigo=puesto_codigo) if f["planta_id"] == planta_id and f["etapa"] == etapa), None)
     return templates.TemplateResponse(request, "_cobertura_fila.html", {
         "f": fila, "mostrar_puesto": True, "mostrar_planta": False, "accion_url": f"/ui/plantas/{planta_id}/asignar",
-        "personas": db.query(m.Persona).filter(m.Persona.activo == 1).order_by(m.Persona.apellido).all(),
+        "personas": personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1)),
         "plantas": db.query(m.Planta).all()})

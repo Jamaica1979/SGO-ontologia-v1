@@ -21,6 +21,14 @@
     <input type="text" name="receptor" value="{{ v.receptor if v else '' }}">
     <label>Frecuencia</label>
     <input type="text" name="frecuencia" value="{{ v.frecuencia if v else '' }}">
+    {% set pc = (valores.padre_codigo if valores and valores.padre_codigo is defined else padre_actual) or '' %}
+    <label>Es parte de otro formulario (opcional)</label>
+    <select name="padre_codigo">
+      <option value="">— Es un formulario independiente —</option>
+      {% for pf in posibles_padres %}<option value="{{ pf.codigo }}" {{ 'selected' if pf.codigo == pc }}>{{ pf.codigo }} — {{ pf.nombre }}</option>{% endfor %}
+    </select>
+    <label>Modelo del formulario — un campo por línea: Campo | tipo | obligatorio (sí/no) | nota</label>
+    <textarea name="estructura" rows="8" placeholder="Fecha | fecha | sí&#10;Horómetro de la máquina | número | sí&#10;Horómetro del martillo | número | sí | vida útil y service propios">{{ (v.estructura if v else '') or '' }}</textarea>
     <div class="actions">
       <button type="submit" class="primary">Guardar</button>
       <a href="{{ '/ui/formularios/' + formulario.codigo if formulario else '/ui/listado/formularios' }}" class="btn">Cancelar</a>

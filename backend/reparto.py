@@ -223,6 +223,12 @@ def cobertura_de_puesto(db: Session, puesto_codigo: str, planta_id=None, etapa=N
     scope = _ambito_planta(puesto, planta_id)
     acts = db.query(m.Actividad).filter(m.Actividad.puesto_codigo == puesto_codigo,
                                          m.Actividad.activo == 1).order_by(m.Actividad.codigo).all()
+    from aplicabilidad import mapa_exclusiones
+    act_excl, puestos_excl = mapa_exclusiones(db)
+    no_aplican = [a for a in acts if planta_id is not None and a.id in act_excl.get(planta_id, ())]
+    if no_aplican:
+        acts = [a for a in acts if a not in no_aplican]
+    ex_puesto = puestos_excl.get((puesto_codigo, planta_id)) if planta_id is not None else None
     asigs = [a for a in _activas(db) if _matchea(a, scope, etapa)]
     ced = cedidas_por_asignacion(db)
     perfil = defaultdict(set)
@@ -254,6 +260,7 @@ def cobertura_de_puesto(db: Session, puesto_codigo: str, planta_id=None, etapa=N
         filas.append({"actividad": _act(act), "titulares": titulares, "cedida": cedida, "estado": estado})
     return {
         "puesto": puesto, "titulares_puesto": titulares_puesto, "filas": filas,
+        "no_aplican": [_act(a) for a in no_aplican], "ex_puesto": ex_puesto,
         "n_total": len(filas),
         "n_sin_responsable": sum(1 for f in filas if f["estado"] == SIN_RESPONSABLE),
         "n_trasladadas": sum(1 for f in filas if f["estado"] == TRASLADADA),
@@ -274,6 +281,8 @@ class _Datos:
         for a in db.query(m.Actividad).filter(m.Actividad.activo == 1).order_by(m.Actividad.codigo):
             self.acts[a.id] = a
             self.por_puesto[a.puesto_codigo].append(a)
+        from aplicabilidad import mapa_exclusiones
+        self.excl = mapa_exclusiones(db)[0]   # {planta_id: {actividad_id que no aplica}}
         self.asigs = _activas(db)
         self.ced = cedidas_por_asignacion(db)
         self.perfil = defaultdict(set)
@@ -302,7 +311,7 @@ def resumen_persona(datos: _Datos, persona_id: int):
             puesto = datos.puestos.get(a.puesto_codigo)
             puestos_cod.append(a.puesto_codigo)
             cedidas_ids = datos.ced.get(a.id, set())
-            todas = datos.por_puesto.get(a.puesto_codigo, [])
+            todas = [x for x in datos.por_puesto.get(a.puesto_codigo, []) if x.id not in datos.excl.get(a.planta_id, ())]
             propias = [_act(x) for x in todas if x.id not in cedidas_ids]
             scope = _ambito_planta(puesto, a.planta_id)
             cedidas = [{"actividad": _act(x), "a_cargo_de": datos.quienes_llevan_suelta(x.id, scope, a.etapa)}
@@ -369,7 +378,8 @@ def impacto_de_finalizar(db: Session, asignaciones):
 
     def efectivas(x):
         if x.puesto_codigo:
-            return {a.id for a in datos.por_puesto.get(x.puesto_codigo, [])} - datos.ced.get(x.id, set())
+            return ({a.id for a in datos.por_puesto.get(x.puesto_codigo, [])}
+                    - datos.ced.get(x.id, set()) - datos.excl.get(x.planta_id, set()))
         return set(datos.perfil.get(x.perfil_id, set()))
 
     efectivas_restantes = [(x, efectivas(x)) for x in restantes]

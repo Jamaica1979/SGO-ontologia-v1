@@ -3,10 +3,10 @@
 {% block content %}
 <div class="card">
   <div class="persona-head">
-    <div class="avatar">{{ formulario.codigo[-2:] }}</div>
+    <div class="avatar">{{ formulario.codigo[2:4] }}</div>
     <div>
       <h2>{{ formulario.codigo }} — {{ formulario.nombre }}</h2>
-      <p class="sub">{{ formulario.origen or "Origen sin especificar" }}{% if formulario.frecuencia %} · {{ formulario.frecuencia }}{% endif %}</p>
+      <p class="sub">{% if padre %}Parte de <a href="/ui/formularios/{{ padre.codigo }}">{{ padre.codigo }} — {{ padre.nombre }}</a> · {% endif %}{{ formulario.origen or "Origen sin especificar" }}{% if formulario.frecuencia %} · {{ formulario.frecuencia }}{% endif %}</p>
     </div>
     <div style="margin-left:auto;display:flex;gap:8px">
       <a href="/ui/formularios/{{ formulario.codigo }}/editar" class="btn">Editar</a>
@@ -22,6 +22,27 @@
     <tr><td style="color:var(--gray);padding-right:12px">Receptor</td><td>{{ formulario.receptor or "—" }}</td></tr>
     <tr><td style="color:var(--gray);padding-right:12px">Frecuencia</td><td>{{ formulario.frecuencia or "—" }}</td></tr>
   </table>
+
+  {% if padre %}
+  <p class="aviso-ok">Este parte alimenta al <a href="/ui/formularios/{{ padre.codigo }}"><b>{{ padre.codigo }} — {{ padre.nombre }}</b></a>{% if padre.emisor %}, que registra {{ padre.emisor }}{% endif %}.</p>
+  {% endif %}
+
+  {% if not padre %}
+  <h3>Partes que lo componen{% if partes %} — {{ partes|length }}{% endif %}</h3>
+  {% for pt in partes %}
+  <div class="row"><div class="main"><a href="/ui/formularios/{{ pt.codigo }}"><b>{{ pt.codigo }}</b> — {{ pt.nombre }}</a>
+    <span class="meta">{{ pt.emisor or "emisor sin definir" }}{% if pt.frecuencia %} · {{ pt.frecuencia }}{% endif %}</span></div></div>
+  {% else %}<p class="empty">No tiene partes registradas.</p>{% endfor %}
+  <p><a class="btn" href="/ui/formularios/nuevo?padre={{ formulario.codigo }}">+ Agregar una parte</a></p>
+  {% endif %}
+
+  <h3>Modelo del formulario</h3>
+  {% if campos %}
+  <table class="tabla"><thead><tr><th>Campo</th><th>Tipo</th><th>Obligatorio</th><th>Nota</th></tr></thead><tbody>
+    {% for c in campos %}<tr><td>{{ c.campo }}</td><td>{{ c.tipo }}</td><td>{{ c.obligatorio }}</td><td>{{ c.nota }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% if nota_modelo %}<p class="meta">{{ nota_modelo }}</p>{% endif %}
+  {% else %}<p class="empty">Modelo sin definir todavía. Se carga desde "Editar".</p>{% endif %}
 
   <h3>Procedimientos que lo generan o usan</h3>
   {% for p in procedimientos %}

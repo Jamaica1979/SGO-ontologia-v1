@@ -37,6 +37,12 @@
     {% endfor %}
   {% else %}<p class="empty">Nadie la tiene cubierta hoy.</p>{% endif %}
 
+  <details class="bloque" {% if aplicabilidad|selectattr('modo','ne','aplica')|list %}open{% endif %}>
+    <summary><b>Aplicabilidad por planta</b>
+      <span class="meta"> — marcá las plantas donde esta actividad no corresponde</span></summary>
+    {% with filas=aplicabilidad, puesto_codigo=None, actividad_id=actividad.id, volver="/ui/actividades/" + actividad.codigo %}{% include "_aplicabilidad.html" %}{% endwith %}
+  </details>
+
   <h3>Capacitación requerida</h3>
   {% if capacitaciones %}
     {% for c in capacitaciones %}<span class="tag warn" style="margin:3px">{{ c }}</span>{% endfor %}

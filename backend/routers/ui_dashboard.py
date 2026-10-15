@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, Form
+from fastapi import APIRouter, Depends, Request, Form, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from auth import verificar_acceso
 from functions import calcular_cobertura, resumen_cobertura, bandeja_de_pendientes, detectar_alertas, calcular_riesgo_dependencia
 from routers.ui_shared import asignar_o_reasignar
 import models as m
+from util_texto import personas_ordenadas
 
 router = APIRouter(prefix="/ui/dashboard", dependencies=[Depends(verificar_acceso)])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
@@ -26,14 +27,31 @@ def _ctx(db: Session):
     return {
         "general": general, "por_planta": por_planta, "pendientes": pendientes,
         "alertas": detectar_alertas(db), "riesgos": calcular_riesgo_dependencia(db),
-        "personas": db.query(m.Persona).filter(m.Persona.activo == 1).order_by(m.Persona.apellido).all(),
+        "personas": personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1)),
         "plantas": plantas,
     }
 
 
 @router.get("", response_class=HTMLResponse)
-def ver(request: Request, db: Session = Depends(get_db)):
-    return templates.TemplateResponse(request, "dashboard.html", _ctx(db))
+def ver(request: Request, abrir: str = None, db: Session = Depends(get_db)):
+    ctx = _ctx(db)
+    ctx["abrir"] = abrir if abrir in ("pendientes", "alertas", "riesgos") else None
+    return templates.TemplateResponse(request, "dashboard.html", ctx)
+
+
+@router.get("/seccion/{nombre}", response_class=HTMLResponse)
+def seccion(nombre: str, request: Request, db: Session = Depends(get_db)):
+    """Contenido de una sección plegada del dashboard: se pide recién cuando se la abre."""
+    if nombre == "pendientes":
+        return templates.TemplateResponse(request, "_dash_pendientes.html", {
+            "pendientes": bandeja_de_pendientes(db),
+            "personas": personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1)),
+            "plantas": db.query(m.Planta).all()})
+    if nombre == "alertas":
+        return templates.TemplateResponse(request, "_dash_alertas.html", {"alertas": detectar_alertas(db)})
+    if nombre == "riesgos":
+        return templates.TemplateResponse(request, "_dash_riesgos.html", {"riesgos": calcular_riesgo_dependencia(db)})
+    raise HTTPException(404, "Sección inexistente")
 
 
 @router.post("/asignar", response_class=HTMLResponse)
@@ -49,5 +67,5 @@ def asignar(request: Request, db: Session = Depends(get_db),
     fila = next((f for f in calcular_cobertura(db, puesto_codigo=puesto_codigo) if f["planta_id"] == planta_id and f["etapa"] == etapa), None)
     return templates.TemplateResponse(request, "_cobertura_fila.html", {
         "f": fila, "mostrar_puesto": True, "mostrar_planta": True, "accion_url": "/ui/dashboard/asignar",
-        "personas": db.query(m.Persona).filter(m.Persona.activo == 1).order_by(m.Persona.apellido).all(),
+        "personas": personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1)),
         "plantas": db.query(m.Planta).all()})

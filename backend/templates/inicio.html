@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+<style>
+  .portada { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
+  .portada .tema { background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .portada .tema h3 { margin: 0 0 2px; font-size: 15px; color: var(--navy); text-transform: none; letter-spacing: 0; }
+  .portada .tema p { margin: 0 0 10px; font-size: 12px; color: var(--gray); }
+  .portada .enlace { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--border);
+                     text-decoration: none; color: var(--navy); font-weight: 600; font-size: 14px; }
+  .portada .enlace small { font-weight: 400; color: var(--gray); font-size: 12px; }
+  .portada .enlace:hover { color: var(--navy-light); }
+  .atencion { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+</style>
+<div class="card">
+  <h2 style="margin:0">Sistema de Gestión Organizacional</h2>
+  <p class="meta" style="margin:4px 0 0">Cantera Eldorado S.A. — manual de funciones, procedimientos, coordinación e indicadores.</p>
+  <div class="kpis atencion">
+    <a class="kpi {{ 'ok' if general.pct_cobertura >= 80 else ('warn' if general.pct_cobertura >= 40 else 'crit') }}" href="/ui/reportes/cobertura" style="text-decoration:none;color:inherit"><b>{{ general.pct_cobertura }}%</b><span>cobertura del manual</span></a>
+    <a class="kpi {{ 'crit' if pendientes else 'ok' }}" href="/ui/dashboard?abrir=pendientes#sec-pendientes" style="text-decoration:none;color:inherit"><b>{{ pendientes }}</b><span>pendientes de cobertura</span></a>
+    <a class="kpi {{ 'warn' if alertas else 'ok' }}" href="/ui/dashboard?abrir=alertas#sec-alertas" style="text-decoration:none;color:inherit"><b>{{ alertas }}</b><span>alertas</span></a>
+    <a class="kpi {{ 'crit' if sin_respaldo else 'ok' }}" href="/ui/dashboard?abrir=riesgos#sec-riesgos" style="text-decoration:none;color:inherit"><b>{{ sin_respaldo }}</b><span>dependencias sin respaldo</span></a>
+  </div>
+</div>
+
+<div class="portada">
+  <section class="tema">
+    <h3>Estructura de la empresa</h3><p>Cómo está armada: quién es quién y dónde.</p>
+    <a class="enlace" href="/ui/organigrama">Organigrama <small>teórico y real</small></a>
+    <a class="enlace" href="/ui/listado/puestos">Puestos <small>{{ n_puestos }}</small></a>
+    <a class="enlace" href="/ui/listado/personas">Personas <small>{{ n_personas }}</small></a>
+    <a class="enlace" href="/ui/listado/plantas">Plantas <small>{{ n_plantas }}</small></a>
+    <a class="enlace" href="/ui/listado/actividades">Actividades <small>{{ n_actividades }}</small></a>
+  </section>
+  <section class="tema">
+    <h3>Asignación y cobertura</h3><p>Quién hace qué y qué queda sin responsable.</p>
+    <a class="enlace" href="/ui/reportes/cobertura">Cobertura por puesto <small>{{ general.pct_cobertura }}%</small></a>
+    <a class="enlace" href="/ui/reportes/personas">Actividades por persona <small>y fichas de reestructuración</small></a>
+    <a class="enlace" href="/ui/dashboard?abrir=pendientes#sec-pendientes">Pendientes de asignar <small>{{ pendientes }}</small></a>
+    <a class="enlace" href="/ui/reportes">Todos los reportes <small>Excel y PDF</small></a>
+  </section>
+  <section class="tema">
+    <h3>Procesos y control</h3><p>Cómo se trabaja y cómo se mide.</p>
+    <a class="enlace" href="/ui/listado/procedimientos">Procedimientos <small>{{ n_procedimientos }}</small></a>
+    <a class="enlace" href="/ui/listado/mecanismos">Mecanismos de coordinación <small>{{ n_mecanismos }}</small></a>
+    <a class="enlace" href="/ui/listado/formularios">Formularios <small>{{ n_formularios }}</small></a>
+    <a class="enlace" href="/ui/listado/indicadores">Indicadores (KPIs) <small>{{ n_indicadores }}</small></a>
+  </section>
+  <section class="tema">
+    <h3>Seguimiento</h3><p>Lo que requiere atención y lo que ya pasó.</p>
+    <a class="enlace" href="/ui/dashboard">Dashboard <small>resumen y pendientes</small></a>
+    <a class="enlace" href="/ui/dashboard?abrir=alertas#sec-alertas">Alertas <small>{{ alertas }}</small></a>
+    <a class="enlace" href="/ui/dashboard?abrir=riesgos#sec-riesgos">Riesgo de dependencia <small>{{ sin_respaldo }} sin respaldo</small></a>
+    <a class="enlace" href="/ui/historial">Historial de cambios <small>auditoría</small></a>
+  </section>
+</div>
+{% endblock %}

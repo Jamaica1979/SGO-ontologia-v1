@@ -6,6 +6,7 @@ from pathlib import Path
 from database import get_db
 from auth import verificar_acceso
 import models as m
+from util_texto import personas_ordenadas
 
 router = APIRouter(prefix="/ui/listado", dependencies=[Depends(verificar_acceso)])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
@@ -35,11 +36,11 @@ def personas(request: Request, ver_baja: bool = False, db: Session = Depends(get
     q = db.query(m.Persona)
     if not ver_baja:
         q = q.filter(m.Persona.activo == 1)
-    items = [{"principal": f"{p.nombre} {p.apellido}", "sub": p.legajo and f"Legajo {p.legajo}" or "Sin legajo",
+    items = [{"principal": p.nombre_completo, "sub": " · ".join(x for x in (p.cargo_nomina, p.legajo and f"Legajo {p.legajo}" or "Sin legajo") if x),
               "href": f"/ui/personas/{p.id}",
               "tag": "BAJA" if not p.activo else (None if p.estado_legajo == "completo" else p.estado_legajo),
               "tag_clase": "off" if not p.activo else "warn", "de_baja": not p.activo}
-             for p in q.order_by(m.Persona.apellido)]
+             for p in personas_ordenadas(q)]
     return _render(request, "Personas", items, nuevo_link={"texto": "+ Nueva persona", "href": "/ui/personas/nuevo"},
                    toggle_link={"texto": "Ocultar dados de baja" if ver_baja else "Ver también dados de baja",
                                 "href": "/ui/listado/personas" if ver_baja else "/ui/listado/personas?ver_baja=1"})
@@ -105,8 +106,20 @@ def procedimientos(request: Request, ver_baja: bool = False, db: Session = Depen
 
 @router.get("/formularios", response_class=HTMLResponse)
 def formularios(request: Request, db: Session = Depends(get_db)):
-    items = [{"principal": f"{f.codigo} — {f.nombre}", "sub": f.origen, "href": f"/ui/formularios/{f.codigo}"}
-              for f in db.query(m.Formulario).order_by(m.Formulario.codigo)]
+    todos = db.query(m.Formulario).order_by(m.Formulario.codigo).all()
+    partes = {}
+    for f in todos:
+        if f.formulario_padre_id:
+            partes.setdefault(f.formulario_padre_id, []).append(f)
+    items = []
+    for f in todos:
+        if f.formulario_padre_id:
+            continue
+        n = len(partes.get(f.id, []))
+        items.append({"principal": f"{f.codigo} — {f.nombre}", "sub": (f.origen or "") + (f" · {n} parte{'s' if n != 1 else ''}" if n else ""),
+                      "href": f"/ui/formularios/{f.codigo}"})
+        for pt in partes.get(f.id, []):
+            items.append({"principal": f"   ↳ {pt.codigo} — {pt.nombre}", "sub": pt.emisor, "href": f"/ui/formularios/{pt.codigo}"})
     return _render(request, "Formularios", items, nuevo_link={"texto": "+ Nuevo formulario", "href": "/ui/formularios/nuevo"})
 
 

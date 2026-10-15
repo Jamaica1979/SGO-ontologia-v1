@@ -82,8 +82,32 @@ class Persona(Base):
     notas = Column(Text)
     activo = Column(Integer, server_default="1")
     created_at = Column(Text, server_default=NOW)
+    # Datos de nómina (v3.7). Son hechos de RR.HH.; la planta donde la persona
+    # CUBRE puestos sigue saliendo de la Asignación, no de planta_base_id.
+    apodo = Column(Text)
+    fecha_ingreso = Column(Text)          # ISO yyyy-mm-dd; la antigüedad se calcula desde acá si existe
+    sector = Column(Text)
+    cargo_nomina = Column(Text)           # cómo figura en la planilla de personal
+    planta_base_id = Column(Integer, ForeignKey("plantas.id"))
 
     convenio = relationship("ConvenioColectivo")
+
+    @property
+    def antiguedad(self):
+        """Años de antigüedad: calculados desde fecha_ingreso si está cargada; si no, el dato manual."""
+        from datetime import date
+        if self.fecha_ingreso:
+            try:
+                f = date.fromisoformat(self.fecha_ingreso)
+                return round((date.today() - f).days / 365.25, 1)
+            except ValueError:
+                pass
+        return self.antiguedad_anos
+
+    @property
+    def nombre_completo(self):
+        n = f"{self.apellido}, {self.nombre}".strip(", ")
+        return f"{n} ({self.apodo})" if self.apodo else n
     # nota: NO hay planta_id acá — la planta "de referencia" se deriva de la
     # Asignación activa, no se guarda por duplicado (disciplina de la Sección 12, punto 3).
 
@@ -227,6 +251,9 @@ class Formulario(Base):
     frecuencia = Column(Text)
     created_at = Column(Text, server_default=NOW)
     updated_at = Column(Text, server_default=NOW)
+    # v3.7: un formulario puede ser PARTE de otro (F-08.1 Parte de perforación → F-08)
+    formulario_padre_id = Column(Integer, ForeignKey("formularios.id"))
+    estructura = Column(Text)   # modelo del formulario: un campo por línea ("Campo | tipo | obligatorio")
 
 
 # ═══════════════════════ JUNCTION OBJECTS ═══════════════════════
@@ -348,6 +375,24 @@ class ActividadCedida(Base):
     asignacion_id = Column(Integer, ForeignKey("asignaciones.id"), primary_key=True)
     actividad_id = Column(Integer, ForeignKey("actividades.id"), primary_key=True)
     created_at = Column(Text, server_default=NOW)
+
+
+class ExclusionPlanta(Base):
+    """Aplicabilidad por planta (v3.7). Por defecto todo puesto y toda actividad
+    aplica en todas las plantas; esta tabla registra las excepciones.
+      - puesto_codigo + se_reparte=1: el puesto no existe en esa planta pero sus
+        actividades SÍ hay que hacerlas; se reparten entre otras personas (perfil individual).
+      - puesto_codigo + se_reparte=0: ni el puesto ni sus actividades aplican allí.
+      - actividad_id: esa actividad no corresponde en esa planta (p. ej. tareas de planta remota en sede)."""
+    __tablename__ = "exclusiones_planta"
+    id = Column(Integer, primary_key=True)
+    planta_id = Column(Integer, ForeignKey("plantas.id"), nullable=False)
+    puesto_codigo = Column(Text, ForeignKey("puestos.codigo"))
+    actividad_id = Column(Integer, ForeignKey("actividades.id"))
+    se_reparte = Column(Integer, server_default="0")
+    motivo = Column(Text)
+    created_at = Column(Text, server_default=NOW)
+    __table_args__ = (UniqueConstraint("planta_id", "puesto_codigo", "actividad_id"),)
 
 
 class ProcedimientoPuesto(Base):

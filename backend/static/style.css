@@ -127,3 +127,11 @@ table.tabla select { padding: 5px 8px; border: 1px solid var(--border); border-r
 /* enlaces dentro de líneas meta y resúmenes */
 .meta a, .fila-persona a, details.bloque a { color: var(--navy-light, #2c5282); font-weight: 600; text-decoration: none; }
 .meta a:hover, .fila-persona a:hover, details.bloque a:hover { text-decoration: underline; }
+
+/* dashboard: secciones plegables */
+details.seccion > summary { cursor: pointer; list-style: none; }
+details.seccion > summary::-webkit-details-marker { display: none; }
+details.seccion > summary::before { content: "▸ "; color: var(--gray); }
+details.seccion[open] > summary::before { content: "▾ "; }
+details.seccion .contenido { margin-top: 10px; }
+a.kpi:hover { box-shadow: 0 0 0 2px var(--navy-light); }

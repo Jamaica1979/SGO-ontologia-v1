@@ -52,6 +52,12 @@
     {% endfor %}
   </div>
 
+  <details class="bloque" {% if aplicabilidad|selectattr('modo','ne','aplica')|list %}open{% endif %}>
+    <summary><b>Aplicabilidad por planta</b>
+      <span class="meta"> — por defecto el puesto aplica en todas; acá se marcan las excepciones</span></summary>
+    {% with filas=aplicabilidad, puesto_codigo=puesto.codigo, actividad_id=None, volver="/ui/puestos/" + puesto.codigo %}{% include "_aplicabilidad.html" %}{% endwith %}
+  </details>
+
   <h3>Actividades — {{ actividades|length }}</h3>
   {% for a in actividades %}
   <div class="row"><div class="main"><a href="/ui/actividades/{{ a.codigo }}">{{ a.codigo }}</a> — {{ a.descripcion }}{% if a.es_critica %} <span class="tag crit">crítica</span>{% endif %}</div></div>

@@ -11,10 +11,11 @@
     <div class="meta">
       {% if f.responsables %}{% for r in f.responsables %}<a href="/ui/personas/{{ r.persona_id }}">{{ r.persona }}</a>{% if r.via == 'perfil' %} (perfil{% if r.n_actividades %}, {{ r.n_actividades }} act.{% endif %}){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
       {% else %}<span class="empty">sin responsable</span>{% endif %}
+      {% if f.se_reparte %}<div><span class="tag warn">el puesto no existe en esta planta</span> sus actividades se reparten entre otras personas{% if f.motivo_no_aplica %} — {{ f.motivo_no_aplica }}{% endif %}</div>{% endif %}
     </div>
   </div>
   <a class="btn" href="/ui/reparto/{{ f.puesto_codigo }}{% if f.planta_id %}?planta_id={{ f.planta_id }}{% if f.etapa and f.etapa != 'sin_etapa' %}&etapa={{ f.etapa }}{% endif %}{% endif %}">Repartir</a>
-  {% if accion_url and (f.planta_id or plantas) %}
+  {% if accion_url and (f.planta_id or plantas) and not f.se_reparte %}
   <details>
     <summary class="btn">{{ 'Reasignar' if f.responsables else '+ Asignar' }}</summary>
     <form class="inline" hx-post="{{ accion_url }}" hx-target="closest #cob-{{ f.puesto_codigo }}-{{ f.planta_id or 0 }}-{{ f.etapa or 0 }}" hx-swap="outerHTML">
@@ -28,7 +29,7 @@
       {% endif %}
       <select name="persona_id" required>
         <option value="">-- elegir persona --</option>
-        {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre }} {{ p.apellido }}</option>{% endfor %}
+        {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre_completo }}</option>{% endfor %}
       </select>
       <button type="submit" class="primary">Confirmar</button>
     </form>

@@ -9,6 +9,7 @@ from auth import verificar_acceso
 from functions import calcular_dias_para_extincion, calcular_cobertura
 from routers.ui_shared import asignar_o_reasignar
 import models as m
+from util_texto import personas_ordenadas
 
 router = APIRouter(prefix="/ui/puestos", dependencies=[Depends(verificar_acceso)])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
@@ -60,8 +61,9 @@ def _ctx(db: Session, codigo: str):
         "rol_transicion": ({**{k: v for k, v in vars(rol_transicion).items() if not k.startswith("_")},
                             "dias_para_extincion": calcular_dias_para_extincion(rol_transicion.fecha_estimada_extincion)}
                            if rol_transicion else None),
-        "personas": db.query(m.Persona).filter(m.Persona.activo == 1).order_by(m.Persona.apellido).all(),
+        "personas": personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1)),
         "plantas": db.query(m.Planta).all(),
+        "aplicabilidad": __import__("aplicabilidad").filas_aplicabilidad(db, puesto_codigo=codigo),
     }
 
 
@@ -137,7 +139,7 @@ def asignar(codigo: str, request: Request, db: Session = Depends(get_db),
     fila = next((f for f in calcular_cobertura(db, puesto_codigo=codigo) if f["planta_id"] == planta_id and f["etapa"] == etapa), None)
     return templates.TemplateResponse(request, "_cobertura_fila.html", {
         "f": fila, "mostrar_puesto": False, "mostrar_planta": True, "accion_url": f"/ui/puestos/{codigo}/asignar",
-        "personas": db.query(m.Persona).filter(m.Persona.activo == 1).order_by(m.Persona.apellido).all(),
+        "personas": personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1)),
         "plantas": db.query(m.Planta).all()})
 
 

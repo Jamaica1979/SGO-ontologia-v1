@@ -18,7 +18,8 @@ function marcarTodasSueltas(root, valor) {
     <div class="avatar">{{ iniciales }}</div>
     <div>
       <h2>{{ persona.nombre }} {{ persona.apellido }}{% if not persona.activo %} <span class="tag off">BAJA</span>{% endif %}</h2>
-      <p class="sub">{{ convenio_nombre or "Sin convenio cargado" }}{% if persona.legajo %} · Legajo {{ persona.legajo }}{% endif %}</p>
+      <p class="sub">{{ convenio_nombre or "Sin convenio cargado" }}{% if persona.legajo %} · Legajo {{ persona.legajo }}{% endif %}{% if persona.antiguedad is not none %} · {{ persona.antiguedad }} años de antigüedad{% endif %}</p>
+      {% if persona.apodo or persona.cargo_nomina or persona.sector %}<p class="sub">{% if persona.apodo %}«{{ persona.apodo }}»{% endif %}{% if persona.cargo_nomina %} · Cargo en nómina: {{ persona.cargo_nomina }}{% endif %}{% if persona.sector %} · Sector: {{ persona.sector }}{% endif %}</p>{% endif %}
     </div>
     <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
       <span class="tag {% if persona.estado_legajo == 'completo' %}ok{% else %}warn{% endif %}">
