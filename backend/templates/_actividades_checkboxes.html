@@ -1,7 +1,8 @@
-{% if requiere_etapa %}
+{% if posiciones %}
 <div>
-  <label>Etapa (este puesto tiene línea primaria y secundaria a la vez)</label>
-  <select name="etapa" required><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select>
+  <label>Posición <span class="meta">(opcional — si no elegís, vale para cualquier posición del puesto)</span></label>
+  <select name="etapa"><option value="">— cualquier posición —</option>
+    {% for x in posiciones %}<option value="{{ x.clave }}">{{ x.nombre }}</option>{% endfor %}</select>
 </div>
 {% endif %}
 {% if actividades %}
@@ -14,7 +15,7 @@
   <div class="checklist">
     {% for a in actividades %}
     <label class="check-row"><input type="checkbox" name="actividad_ids" value="{{ a.id }}">
-      <span>{{ a.codigo }} — {{ a.descripcion }}
+      <span>{{ a.codigo }} — {{ a.descripcion }}{% if a.posicion %} <span class="tag warn">{{ pos_nombre(a.puesto_codigo, a.posicion) }}</span>{% endif %}
         <span class="meta">· hoy: {% if hoy.get(a.id) %}{{ hoy[a.id] }}{% else %}<b style="color:var(--crit)">sin responsable</b>{% endif %}</span></span></label>
     <input type="hidden" name="todas_ids" value="{{ a.id }}">
     {% endfor %}

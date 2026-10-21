@@ -16,7 +16,7 @@ import models as m
 router = APIRouter(prefix="/ui/reportes", dependencies=[Depends(verificar_acceso)])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
 
-ESTADO_TXT = {"cubierta": "Cubierta", "cubierta_sin_etapa": "Cubierta, sin etapa", "parcial": "Parcial",
+ESTADO_TXT = {"cubierta": "Cubierta", "cubierta_sin_etapa": "Cubierta, sin posición", "parcial": "Parcial",
               "sin_asignar": "Sin asignar", "sin_actividades": "Sin actividades"}
 
 
@@ -105,43 +105,37 @@ def reporte_por_persona_xlsx(planta_id: int = None, incluir_bajas: bool = False,
     ], f"Asignacion_por_persona_{date.today().isoformat()}.xlsx")
 
 
-# ───────────────────────── ficha de reestructuración (PDF) ─────────────────────────
+# ───────────────────────── ficha de puesto por persona (PDF) ─────────────────────────
 
 def _ctx_ficha_pdf(db: Session, persona_id: int):
+    """v3.9: una ficha por cada puesto que ocupa la persona, con el orden de las fichas de
+    producción y filtrada a lo suyo: su posición y sólo las tareas que lleva (sin las cedidas)."""
+    from ficha_puesto import armar_ficha
+    from posiciones import nombre as pos_nombre
     persona = db.query(m.Persona).get(persona_id)
     if not persona:
         raise HTTPException(404, "Persona no encontrada")
     a_cargo = actividades_a_cargo(db, persona_id)
 
-    def etiqueta(cod):
-        p = db.query(m.Puesto).filter(m.Puesto.codigo == cod).first()
-        return f"{cod} — {p.nombre}" if p else cod
-
-    def referencias(cod):
-        mecs = [f"{mp.mecanismo.codigo} {mp.mecanismo.nombre} ({mp.rol})"
-                for mp in db.query(m.MecanismoPuesto).filter(m.MecanismoPuesto.puesto_codigo == cod)]
-        procs = [f"{pr.codigo} {pr.nombre}" for pr in db.query(m.Procedimiento).join(
-                    m.ProcedimientoPuesto, m.ProcedimientoPuesto.procedimiento_id == m.Procedimiento.id)
-                 .filter(m.ProcedimientoPuesto.puesto_codigo == cod, m.Procedimiento.vigente == 1)]
-        inds = [f"{i.codigo} {i.nombre}" for i in db.query(m.Indicador).filter(
-                    m.Indicador.activo == 1,
-                    (m.Indicador.responsable_carga_puesto_codigo == cod) | (m.Indicador.responsable_uso_puesto_codigo == cod))]
-        return {"mecanismos": mecs, "procedimientos": procs, "indicadores": inds}
-
     puestos = []
     for b in a_cargo["bloques_propios"]:
-        p = db.query(m.Puesto).filter(m.Puesto.codigo == b["puesto_codigo"]).first()
-        rel = db.query(m.RelacionReporte).filter(m.RelacionReporte.puesto_codigo == b["puesto_codigo"]).all()
-        puestos.append({"codigo": b["puesto_codigo"], "nombre": b["puesto_nombre"], "planta": b["planta"], "etapa": b["etapa"],
-                        "proposito": p.proposito if p else None,
-                        "reporta_a": [etiqueta(r.relacionado_codigo) for r in rel if r.tipo == "jerarquico"],
-                        "coordina_con": [etiqueta(r.relacionado_codigo) for r in rel if r.tipo == "funcional"],
-                        **referencias(b["puesto_codigo"])})
-    origenes = []
+        ids = {x["id"] for x in b["propias"]}
+        ficha = armar_ficha(db, b["puesto_codigo"], posicion=b["etapa"], actividad_ids=ids, planta_id=b["planta_id"])
+        if not ficha:
+            continue
+        puestos.append({"codigo": b["puesto_codigo"], "nombre": b["puesto_nombre"], "planta": b["planta"],
+                        "posicion_nombre": pos_nombre(b["puesto_codigo"], b["etapa"]) if b["etapa"] else None,
+                        "ficha": ficha, "cedidas": b["cedidas"]})
+
+    recibidos = []
     for b in a_cargo["bloques_recibidos"]:
-        if b["puesto_codigo"] and b["puesto_codigo"] not in {o["codigo"] for o in origenes}:
-            origenes.append({"codigo": b["puesto_codigo"], "nombre": b["puesto_nombre"], **referencias(b["puesto_codigo"])})
-    return {"persona": persona, "a_cargo": a_cargo, "puestos": puestos, "origenes": origenes,
+        ref = armar_ficha(db, b["puesto_codigo"]) if b["puesto_codigo"] else None
+        recibidos.append({"codigo": b["puesto_codigo"], "nombre": b["puesto_nombre"], "planta": b["planta"],
+                          "posicion_nombre": pos_nombre(b["puesto_codigo"], b["etapa"]) if b["etapa"] else None,
+                          "titulares": b["titulares"], "actividades": b["actividades"],
+                          "procedimientos": [f"{x['codigo']} {x['nombre']}" for x in ref["procedimientos"]] if ref else [],
+                          "formularios": [f"{x['codigo']} {x['nombre']}" for x in ref["formularios"] if x["rol"] == "completa"] if ref else []})
+    return {"persona": persona, "a_cargo": a_cargo, "puestos": puestos, "recibidos": recibidos,
             "fecha": date.today().strftime("%d/%m/%Y")}
 
 
@@ -183,7 +177,8 @@ def reporte_cobertura_xlsx(planta_id: int = None, solo_pendientes: bool = False,
     filas = _filas_cobertura(db, planta_id, solo_pendientes)
     cob, sin = [], []
     for f in filas:
-        etapa = f["etapa"] if f["etapa"] and f["etapa"] != "sin_etapa" else ""
+        from posiciones import nombre as _pos_nombre
+        etapa = _pos_nombre(f["puesto_codigo"], f["etapa"]) if f["etapa"] else ""
         cob.append([f["puesto_codigo"], f["puesto_nombre"], f["planta_nombre"], etapa,
                     ESTADO_TXT.get(f["estado"], f["estado"]) + (" — el puesto no existe en esta planta: se reparten sus actividades" if f.get("se_reparte") else ""),
                     f["n_actividades"], f["n_por_titular"], f["n_cedidas"], f["n_por_suelta"], f["n_sin_cubrir"],
@@ -191,9 +186,9 @@ def reporte_cobertura_xlsx(planta_id: int = None, solo_pendientes: bool = False,
         for a in f["actividades_sin_asignar"]:
             sin.append([f["puesto_codigo"], f["puesto_nombre"], f["planta_nombre"], etapa, a["codigo"], a["descripcion"], "Sí" if a["es_critica"] else ""])
     return _xlsx([
-        ("Cobertura por puesto", ["Puesto", "Nombre", "Planta", "Etapa", "Estado", "Actividades", "Las lleva el titular",
+        ("Cobertura por puesto", ["Puesto", "Nombre", "Planta", "Posición", "Estado", "Actividades", "Las lleva el titular",
                                   "Cedidas", "Las lleva otra persona", "Sin cubrir", "Responsables"],
          cob, [10, 36, 26, 11, 18, 12, 14, 10, 14, 11, 44]),
-        ("Actividades sin cubrir", ["Puesto", "Nombre", "Planta", "Etapa", "Código", "Actividad", "Crítica"],
+        ("Actividades sin cubrir", ["Puesto", "Nombre", "Planta", "Posición", "Código", "Actividad", "Crítica"],
          sin, [10, 32, 26, 11, 11, 80, 9]),
     ], f"Cobertura_por_puesto_{date.today().isoformat()}.xlsx")

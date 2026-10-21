@@ -39,7 +39,7 @@ def _ficha_persona_ctx(db: Session, persona_id: int):
     tipos_que_tiene = set(h.tipo_capacitacion_id for h in db.query(m.HabilitacionDePersona).filter(m.HabilitacionDePersona.persona_id == persona_id))
     actividad_ids = set()
     for a in asigs:
-        actividad_ids |= actividades_de_asignacion(db, a.puesto_codigo, a.perfil_id, a.id, a.planta_id)
+        actividad_ids |= actividades_de_asignacion(db, a.puesto_codigo, a.perfil_id, a.id, a.planta_id, a.etapa)
     pendientes = []
     if actividad_ids:
         vistos = set()
@@ -63,7 +63,16 @@ def _ficha_persona_ctx(db: Session, persona_id: int):
         "habilitaciones": habilitaciones, "a_cargo": a_cargo, "sugerencias": sugerencias,
         "puestos": db.query(m.Puesto).filter(m.Puesto.vigente == 1).order_by(m.Puesto.codigo).all(),
         "plantas": db.query(m.Planta).all(),
+        "posiciones_por_puesto": _posiciones_por_puesto(db),
     }
+
+
+def _posiciones_por_puesto(db):
+    """{puesto_codigo: [[clave, nombre], ...]} para armar el selector de posición al asignar."""
+    out = {}
+    for x in db.query(m.Posicion).filter(m.Posicion.activo == 1).order_by(m.Posicion.orden, m.Posicion.id):
+        out.setdefault(x.puesto_codigo, []).append([x.clave, x.nombre])
+    return out
 
 
 def _form_persona_ctx(db, persona=None, error=None, valores=None):
@@ -193,24 +202,17 @@ def nueva_asignacion(persona_id: int, request: Request, db: Session = Depends(ge
                       puesto_codigo: str = Form(...), planta_id: int = Form(...),
                       etapa: str = Form(None), permitir_conflicto: bool = Form(False),
                       sin_conflictivas: bool = Form(False)):
-    etapa = etapa or None
-    if puesto_codigo in ("PRD-04", "PRD-05") and not etapa:
-        return templates.TemplateResponse(request, "_conflicto.html", {
-            "persona_id": persona_id, "puesto_codigo": puesto_codigo, "planta_id": planta_id, "etapa": etapa,
-            "conflictos": [{"persona": "—", "puesto_codigo": puesto_codigo, "etapa": None,
-                             "actividades_en_conflicto": ["Falta indicar la etapa: primaria o secundaria"]}],
-            "puede_excluir": False,
-        })
-
+    from posiciones import normalizar, requiere_posicion, validar
+    etapa = normalizar(etapa) if requiere_posicion(db, puesto_codigo) else None
     from aplicabilidad import mensaje_puesto_no_aplica
-    msg = mensaje_puesto_no_aplica(db, puesto_codigo, planta_id)
+    msg = validar(db, puesto_codigo, etapa) or mensaje_puesto_no_aplica(db, puesto_codigo, planta_id)
     if msg:
         return templates.TemplateResponse(request, "_conflicto.html", {
             "persona_id": persona_id, "puesto_codigo": puesto_codigo, "planta_id": planta_id, "etapa": etapa,
             "conflictos": [{"persona": "—", "puesto_codigo": puesto_codigo, "etapa": None, "actividades_en_conflicto": [msg]}],
             "puede_excluir": False,
         })
-    cubiertas = actividades_de_asignacion(db, puesto_codigo, None, None, planta_id)
+    cubiertas = actividades_de_asignacion(db, puesto_codigo, None, None, planta_id, etapa)
     scope_planta = None if es_sede_unica(db, puesto_codigo=puesto_codigo) else planta_id
     conflictos = conflictos_exclusividad(db, scope_planta, cubiertas, etapa=etapa, excluir_persona_id=persona_id)
 
@@ -250,18 +252,18 @@ def actividades_de_puesto_origen(persona_id: int, request: Request, puesto_codig
     """Alimenta el checklist de actividades cuando se elige el puesto de origen
     en el modo 'Actividades sueltas' — Opción B / AsignarActividadSuelta. Muestra quién
     lleva hoy cada actividad, para ver el reparto antes de elegir."""
-    actividades, hoy, personas = [], {}, []
-    requiere_etapa = False
+    actividades, hoy, personas, posiciones = [], {}, [], []
     if puesto_codigo:
         actividades = db.query(m.Actividad).filter(m.Actividad.puesto_codigo == puesto_codigo,
                                                      m.Actividad.activo == 1).order_by(m.Actividad.codigo).all()
-        requiere_etapa = puesto_codigo in ("PRD-04", "PRD-05")
+        from posiciones import posiciones_de
+        posiciones = posiciones_de(db, puesto_codigo)
         for f in cobertura_de_puesto(db, puesto_codigo)["filas"]:
             nombres = sorted({t["persona"] for t in f["titulares"]})
             hoy[f["actividad"]["id"]] = (f"{len(nombres)} personas" if len(nombres) >= 3 else ", ".join(nombres)) or None
         personas = personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1, m.Persona.id != persona_id))
     return templates.TemplateResponse(request, "_actividades_checkboxes.html", {
-        "actividades": actividades, "requiere_etapa": requiere_etapa, "puesto_codigo": puesto_codigo,
+        "actividades": actividades, "posiciones": posiciones, "puesto_codigo": puesto_codigo,
         "hoy": hoy, "personas": personas,
     })
 
@@ -276,7 +278,8 @@ def nueva_actividad_suelta(persona_id: int, request: Request, db: Session = Depe
     otra persona, se ofrece TRASLADARLA (el titular del puesto la cede, el puesto sigue entero)
     o, como antes, confirmar la doble cobertura. 'Resto': las actividades del puesto que no se
     marcaron pueden pasar en el mismo paso a otra persona."""
-    etapa = etapa or None
+    from posiciones import normalizar
+    etapa = normalizar(etapa)
 
     if not actividad_ids:
         ctx = _ficha_persona_ctx(db, persona_id)

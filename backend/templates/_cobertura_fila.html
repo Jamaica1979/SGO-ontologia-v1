@@ -3,9 +3,9 @@
     <div>
       {% if mostrar_puesto %}<a href="/ui/puestos/{{ f.puesto_codigo }}"><strong>{{ f.puesto_codigo }}</strong> — {{ f.puesto_nombre }}</a>{% endif %}
       {% if mostrar_planta %}<a href="/ui/plantas/{{ f.planta_id }}">{{ f.planta_nombre }}</a>{% endif %}
-      {% if f.etapa and f.etapa != 'sin_etapa' %}<span class="tag warn">{{ f.etapa }}</span>{% endif %}
+      {% if f.etapa %}<span class="tag warn">{{ pos_nombre(f.puesto_codigo, f.etapa) }}</span>{% endif %}
       <span class="tag {% if f.estado in ('cubierta','cubierta_sin_etapa') %}ok{% elif f.estado == 'parcial' %}warn{% else %}crit{% endif %}">
-        {{ {'cubierta':'cubierta','cubierta_sin_etapa':'cubierta, sin etapa','parcial':'parcial','sin_asignar':'sin asignar','sin_actividades':'sin actividades'}[f.estado] }}
+        {{ {'cubierta':'cubierta','cubierta_sin_etapa':'cubierta, sin posición','parcial':'parcial','sin_asignar':'sin asignar','sin_actividades':'sin actividades'}[f.estado] }}
       </span>
     </div>
     <div class="meta">
@@ -15,9 +15,9 @@
     </div>
   </div>
   <a class="btn" href="/ui/reparto/{{ f.puesto_codigo }}{% if f.planta_id %}?planta_id={{ f.planta_id }}{% if f.etapa and f.etapa != 'sin_etapa' %}&etapa={{ f.etapa }}{% endif %}{% endif %}">Repartir</a>
-  {% if accion_url and (f.planta_id or plantas) and not f.se_reparte %}
+  {% if accion_url and (f.planta_id or plantas) and not f.se_reparte and f.etapa != 'sin_etapa' %}
   <details>
-    <summary class="btn">{{ 'Reasignar' if f.responsables else '+ Asignar' }}</summary>
+    <summary class="btn">{{ 'Reasignar / sumar' if f.responsables else '+ Asignar' }}</summary>
     <form class="inline" hx-post="{{ accion_url }}" hx-target="closest #cob-{{ f.puesto_codigo }}-{{ f.planta_id or 0 }}-{{ f.etapa or 0 }}" hx-swap="outerHTML">
       <input type="hidden" name="puesto_codigo" value="{{ f.puesto_codigo }}">
       <input type="hidden" name="etapa" value="{{ f.etapa if f.etapa and f.etapa != 'sin_etapa' else '' }}">
@@ -31,6 +31,9 @@
         <option value="">-- elegir persona --</option>
         {% for p in personas %}<option value="{{ p.id }}">{{ p.nombre_completo }}</option>{% endfor %}
       </select>
+      {% if f.responsables and f.etapa != 'sin_etapa' %}
+      <label class="check-inline"><input type="checkbox" name="sumar" value="true"> Sumar sin reemplazar a quien está <span class="meta">(dotación de más de una persona)</span></label>
+      {% endif %}
       <button type="submit" class="primary">Confirmar</button>
     </form>
   </details>

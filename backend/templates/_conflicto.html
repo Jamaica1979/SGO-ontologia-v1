@@ -2,7 +2,7 @@
   <p>⚠️ <b>Ya hay responsable activo para esto:</b></p>
   <ul>
     {% for c in conflictos %}
-    <li>{{ c.persona }} ({{ c.puesto_codigo or 'perfil' }}{% if c.etapa %}, {{ c.etapa }}{% endif %}) ya cubre: {{ c.actividades_en_conflicto|join(', ') }}</li>
+    <li>{{ c.persona }} ({{ c.puesto_codigo or 'perfil' }}{% if c.etapa %}, {{ pos_nombre(c.puesto_codigo, c.etapa) }}{% endif %}) ya cubre: {{ c.actividades_en_conflicto|join(', ') }}</li>
     {% endfor %}
   </ul>
   {% if puede_excluir %}

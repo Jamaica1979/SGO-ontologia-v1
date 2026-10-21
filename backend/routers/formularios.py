@@ -50,6 +50,7 @@ def eliminar(codigo: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Formulario no encontrado")
     db.query(m.ProcedimientoFormulario).filter(m.ProcedimientoFormulario.formulario_id == f.id).delete()
     db.query(m.MecanismoFormulario).filter(m.MecanismoFormulario.formulario_id == f.id).delete()
+    db.query(m.PuestoFormulario).filter(m.PuestoFormulario.formulario_id == f.id).delete()  # v3.9
     db.delete(f)
     db.commit()
     return {"message": "Formulario eliminado"}

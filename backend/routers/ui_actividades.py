@@ -6,6 +6,7 @@ from pathlib import Path
 from database import get_db, log_historial, to_dict
 from auth import verificar_acceso
 import models as m
+from posiciones import MOMENTOS
 
 router = APIRouter(prefix="/ui/actividades", dependencies=[Depends(verificar_acceso)])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
@@ -14,7 +15,26 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / 
 def _form_ctx(db, actividad=None, error=None, valores=None):
     return {"actividad": actividad, "error": error, "valores": valores,
             "puestos": db.query(m.Puesto).filter(m.Puesto.vigente == 1).order_by(m.Puesto.codigo).all(),
-            "funciones": db.query(m.FuncionOrganizacional).order_by(m.FuncionOrganizacional.codigo).all()}
+            "funciones": db.query(m.FuncionOrganizacional).order_by(m.FuncionOrganizacional.codigo).all(),
+            "posiciones": db.query(m.Posicion).filter(m.Posicion.activo == 1).order_by(m.Posicion.puesto_codigo, m.Posicion.orden).all(),
+            "momentos": MOMENTOS}
+
+
+def _validar_posicion(db, puesto_codigo, posicion):
+    """La posición tiene que ser del mismo puesto. Devuelve (posicion_normalizada, error)."""
+    if not posicion:
+        return None, None
+    ok = db.query(m.Posicion).filter(m.Posicion.puesto_codigo == puesto_codigo, m.Posicion.clave == posicion).first()
+    if not ok:
+        return None, f"La posición elegida no pertenece al puesto {puesto_codigo or '(sin puesto)'}."
+    return posicion, None
+
+
+def _int(v):
+    try:
+        return int(v) if v not in (None, "") else None
+    except ValueError:
+        return None
 
 
 # el orden importa: '/nuevo' tiene que registrarse antes que '/{codigo}'
@@ -27,16 +47,20 @@ def nueva_actividad_form(request: Request, db: Session = Depends(get_db)):
 def crear_actividad(request: Request, db: Session = Depends(get_db),
                      codigo: str = Form(...), descripcion: str = Form(...), area: str = Form(...), nivel: str = Form(...),
                      competencia: str = Form(None), es_critica: bool = Form(False), frecuencia: str = Form(None),
-                     notas: str = Form(None), puesto_codigo: str = Form(None), funcion_organizacional_id: str = Form(None)):
-    if db.query(m.Actividad).filter(m.Actividad.codigo == codigo).first():
+                     notas: str = Form(None), puesto_codigo: str = Form(None), funcion_organizacional_id: str = Form(None),
+                     posicion: str = Form(None), momento: str = Form(None), orden: str = Form(None)):
+    pos, err = _validar_posicion(db, puesto_codigo, posicion)
+    if db.query(m.Actividad).filter(m.Actividad.codigo == codigo).first() or err:
         return templates.TemplateResponse(request, "form_actividad.html", _form_ctx(db,
-            error=f"Ya existe una actividad con el código {codigo}.",
+            error=err or f"Ya existe una actividad con el código {codigo}.",
             valores={"codigo": codigo, "descripcion": descripcion, "area": area, "nivel": nivel,
                      "competencia": competencia, "es_critica": es_critica, "frecuencia": frecuencia,
-                     "notas": notas, "puesto_codigo": puesto_codigo, "funcion_organizacional_id": funcion_organizacional_id}))
+                     "notas": notas, "puesto_codigo": puesto_codigo, "funcion_organizacional_id": funcion_organizacional_id,
+                     "posicion": posicion, "momento": momento, "orden": orden}))
     a = m.Actividad(codigo=codigo, descripcion=descripcion, area=area, nivel=nivel, competencia=competencia,
                      es_critica=1 if es_critica else 0, frecuencia=frecuencia, notas=notas,
-                     puesto_codigo=puesto_codigo or None, funcion_organizacional_id=funcion_organizacional_id or None)
+                     puesto_codigo=puesto_codigo or None, funcion_organizacional_id=funcion_organizacional_id or None,
+                     posicion=pos, momento=momento or None, orden=_int(orden))
     db.add(a)
     db.flush()
     log_historial(db, "actividades", a.id, "CrearActividad", despues=to_dict(a))
@@ -83,14 +107,19 @@ def editar_actividad_form(codigo: str, request: Request, db: Session = Depends(g
 def editar_actividad(codigo: str, request: Request, db: Session = Depends(get_db),
                       descripcion: str = Form(...), area: str = Form(...), nivel: str = Form(...),
                       competencia: str = Form(None), es_critica: bool = Form(False), frecuencia: str = Form(None),
-                      notas: str = Form(None), puesto_codigo: str = Form(None), funcion_organizacional_id: str = Form(None)):
+                      notas: str = Form(None), puesto_codigo: str = Form(None), funcion_organizacional_id: str = Form(None),
+                      posicion: str = Form(None), momento: str = Form(None), orden: str = Form(None)):
     a = db.query(m.Actividad).filter(m.Actividad.codigo == codigo).first()
+    pos, err = _validar_posicion(db, puesto_codigo, posicion)
+    if err:
+        return templates.TemplateResponse(request, "form_actividad.html", _form_ctx(db, actividad=a, error=err))
     antes = to_dict(a)
     a.descripcion, a.area, a.nivel = descripcion, area, nivel
     a.competencia, a.es_critica, a.frecuencia = competencia, 1 if es_critica else 0, frecuencia
     a.notas = notas
     a.puesto_codigo = puesto_codigo or None
     a.funcion_organizacional_id = funcion_organizacional_id or None
+    a.posicion, a.momento, a.orden = pos, momento or None, _int(orden)
     log_historial(db, "actividades", a.id, "EditarActividad", antes=antes, despues=to_dict(a))
     db.commit()
     return RedirectResponse(f"/ui/actividades/{codigo}", status_code=303)

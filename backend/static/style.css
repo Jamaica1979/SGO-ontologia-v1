@@ -135,3 +135,14 @@ details.seccion > summary::before { content: "▸ "; color: var(--gray); }
 details.seccion[open] > summary::before { content: "▾ "; }
 details.seccion .contenido { margin-top: 10px; }
 a.kpi:hover { box-shadow: 0 0 0 2px var(--navy-light); }
+
+/* v3.9 — ficha de puesto */
+h4.subtitulo { font-size: 13px; color: var(--navy); margin: 14px 0 4px; }
+.momento { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gray); margin: 10px 0 2px; }
+table.ficha-datos th { width: 230px; text-align: left; vertical-align: top; font-size: 12px; color: var(--gray); }
+table.ficha-datos td { font-size: 13px; }
+table.ficha-datos ul { margin: 0; padding-left: 18px; }
+form.fila-form { display: flex; flex-direction: row; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+form.fila-form select, form.fila-form input { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+fieldset.ficha-campos { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+fieldset.ficha-campos legend { font-size: 13px; font-weight: 700; color: var(--navy); padding: 0 6px; }

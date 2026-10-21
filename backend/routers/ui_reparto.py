@@ -17,11 +17,7 @@ from util_texto import personas_ordenadas
 router = APIRouter(prefix="/ui", dependencies=[Depends(verificar_acceso)])
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
 
-ETAPAS = ("primaria", "secundaria")
-
-
-def _norm(valor):
-    return None if valor in (None, "", "None", "sin_etapa") else valor
+from posiciones import normalizar as _norm, posiciones_de
 
 
 def _ctx_reparto(db: Session, puesto_codigo: str, planta_id=None, etapa=None):
@@ -40,8 +36,8 @@ def _ctx_reparto(db: Session, puesto_codigo: str, planta_id=None, etapa=None):
     cob = cobertura_de_puesto(db, puesto_codigo, planta_id, etapa)
     return {
         "puesto": puesto, "por_planta": por_planta, "plantas": plantas, "planta_id": planta_id,
-        "requiere_etapa": puesto_codigo in ("PRD-04", "PRD-05"), "etapa": etapa,
-        "cob": cob, "etapas": ETAPAS,
+        "posiciones": posiciones_de(db, puesto_codigo), "etapa": etapa,
+        "cob": cob,
         "personas": personas_ordenadas(db.query(m.Persona).filter(m.Persona.activo == 1)),
     }
 

@@ -57,7 +57,7 @@ details.persona[open] > summary { margin-bottom: 8px; border-bottom: 1px solid v
       <p class="empty">Sin ninguna cobertura activa. <a href="/ui/personas/{{ r.persona_id }}">Asignarle un puesto o actividades →</a></p>
     {% else %}
       {% with a_cargo=r, abrir=true %}{% include "_actividades_a_cargo.html" %}{% endwith %}
-      <p style="margin:8px 0 0"><a href="/ui/reportes/personas/{{ r.persona_id }}.pdf" target="_blank" class="btn">Ficha de reestructuración (PDF)</a></p>
+      <p style="margin:8px 0 0"><a href="/ui/reportes/personas/{{ r.persona_id }}.pdf" target="_blank" class="btn">Ficha de puesto (PDF)</a></p>
     {% endif %}
   </details>
   {% else %}

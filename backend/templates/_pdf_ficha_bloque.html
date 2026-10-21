@@ -1,0 +1,119 @@
+{# Bloque de ficha de puesto para los PDF (v3.9). f = armar_ficha(...). #}
+{% macro bloque_ficha(f, encabezado, cedidas=none, mostrar_posiciones=false, salto=false) %}
+<h2 class="sec" {% if salto %}style="-pdf-keep-with-next: true; page-break-before: always"{% endif %}>{{ encabezado }}</h2>
+<table class="ident">
+  <tr><th>Área</th><td>{{ f.puesto.area }} · Nivel {{ f.puesto.nivel }}</td></tr>
+  <tr><th>Reporta a</th><td>{% for r in f.reporta_a %}{{ r.codigo }} {{ r.nombre }}{% if not loop.last %}; {% endif %}{% else %}—{% endfor %}</td></tr>
+  <tr><th>Se coordina con</th><td>{% for r in f.coordina_con %}{{ r.codigo }} {{ r.nombre }}{% if not loop.last %}; {% endif %}{% else %}—{% endfor %}</td></tr>
+  <tr><th>Supervisa a</th><td>{% for r in f.supervisa_a %}{{ r.codigo }} {{ r.nombre }}{% if not loop.last %}; {% endif %}{% else %}Nadie{% endfor %}</td></tr>
+  {% if f.puesto.dotacion %}<tr><th>Dotación</th><td>{{ f.puesto.dotacion }}</td></tr>{% endif %}
+  {% if f.puesto.reemplaza_a %}<tr><th>Reemplaza a</th><td>{{ f.puesto.reemplaza_a }}</td></tr>{% endif %}
+</table>
+
+{% if f.puesto.proposito %}<h3 class="sub">Misión</h3><p>{{ f.puesto.proposito }}</p>{% endif %}
+
+{% if mostrar_posiciones and f.posiciones %}
+<h3 class="sub">Posiciones</h3>
+<p class="meta">Cada persona ocupa una posición: lleva las tareas comunes del puesto más las de su posición.</p>
+<table class="lista">
+  <tr><th>Posición</th><th>Empieza</th><th>Termina</th><th>Equipos</th></tr>
+  {% for x in f.posiciones %}<tr><td><b>{{ x.nombre }}</b></td><td>{{ x.alcance_inicio or '' }}</td><td>{{ x.alcance_fin or '' }}</td><td>{{ (x.equipos|lineas)|join('; ') }}</td></tr>{% endfor %}
+</table>
+{% elif f.alcance_inicio or f.alcance_fin %}
+<h3 class="sub">Dónde empieza y termina su responsabilidad</h3>
+<table class="ident">
+  {% if f.alcance_inicio %}<tr><th>Empieza</th><td>{{ f.alcance_inicio }}</td></tr>{% endif %}
+  {% if f.alcance_fin %}<tr><th>Termina</th><td>{{ f.alcance_fin }}</td></tr>{% endif %}
+</table>
+{% endif %}
+
+{% if f.equipos and not (mostrar_posiciones and f.posiciones) %}
+<h3 class="sub">Equipos a su cargo</h3>
+<ul>{% for e in f.equipos %}<li>{{ e }}</li>{% endfor %}</ul>
+{% endif %}
+
+<h3 class="sub">Tareas</h3>
+{% set ns = namespace(n=0) %}
+{% for b in f.bloques_tareas %}
+  {% if b.titulo %}<p class="bloque-tit">{{ b.titulo }}</p>{% endif %}
+  {% for momento, acts in b.grupos %}
+    {% if momento %}<p class="momento">{{ momento|upper }}</p>{% endif %}
+    <table class="tareas">
+    {% for a in acts %}{% set ns.n = ns.n + 1 %}
+      <tr><td class="num">{{ ns.n }}.</td><td>{{ a.descripcion }}{% if a.es_critica %} <span class="crit">CRÍTICA</span>{% endif %} <span class="cod">{{ a.codigo }}</span></td></tr>
+    {% endfor %}
+    </table>
+  {% endfor %}
+{% else %}<p class="meta">Sin tareas a su cargo en este puesto.</p>{% endfor %}
+{% if cedidas %}
+<p class="bloque-tit">Tareas de este puesto que lleva otra persona</p>
+<table class="tareas">
+  {% for c in cedidas %}<tr><td class="num">–</td><td>{{ c.actividad.descripcion }} <span class="cod">{{ c.actividad.codigo }}</span> <span class="meta">— la lleva: {{ c.a_cargo_de|join(', ') or 'a definir' }}</span></td></tr>{% endfor %}
+</table>
+{% endif %}
+
+{% if f.procedimientos %}
+<h3 class="sub">Procedimientos que aplica</h3>
+{% for pr in f.procedimientos %}
+  <p class="bloque-tit">{{ pr.codigo }} — {{ pr.nombre }} <span class="meta">({{ pr.rol }})</span></p>
+  {% for l in pr.descripcion|lineas %}<p class="meta">{{ l }}</p>{% endfor %}
+  {% if pr.pasos %}
+  <table class="lista">
+    <tr><th style="width:5%">N°</th><th style="width:24%">Paso</th><th>Qué se hace</th><th style="width:20%">Responsable</th></tr>
+    {% for s in pr.pasos %}
+    <tr class="{{ 'suyo' if s.es_suyo }}"><td>{{ s.numero }}</td><td>{% if s.es_suyo %}<b>{{ s.titulo }}</b>{% else %}{{ s.titulo }}{% endif %}</td><td>{{ s.descripcion }}</td><td>{{ s.responsable or '' }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+{% endfor %}
+<p class="nota">Los pasos resaltados son los que tiene a cargo este puesto.</p>
+{% endif %}
+
+{% if f.formularios %}
+<h3 class="sub">Formularios</h3>
+<table class="lista">
+  <tr><th style="width:30%">Formulario</th><th style="width:12%">Rol</th><th>Para qué sirve</th><th style="width:28%">Cuándo y a quién se entrega</th></tr>
+  {% for x in f.formularios %}
+  <tr><td><b>{{ x.codigo }}</b> {{ x.nombre }}{% if x.padre %} <span class="meta">(parte del {{ x.padre }})</span>{% endif %}</td><td>{{ x.rol }}</td><td>{{ x.para_que or '' }}</td><td>{{ x.cuando or '' }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if f.limites %}
+<h3 class="sub">Límites que no se negocian</h3>
+<ul>{% for l in f.limites %}<li>{{ l }}</li>{% endfor %}</ul>
+{% endif %}
+
+{% if f.medicion or f.indicadores %}
+<h3 class="sub">Cómo se mide su desempeño</h3>
+{% if f.medicion %}<ul>{% for l in f.medicion %}<li>{{ l }}</li>{% endfor %}</ul>{% endif %}
+{% if f.indicadores %}
+<table class="lista">
+  <tr><th style="width:12%">Indicador</th><th style="width:30%">Nombre</th><th>Fórmula</th><th style="width:12%">Frecuencia</th><th style="width:12%">Rol</th></tr>
+  {% for i in f.indicadores %}<tr><td>{{ i.codigo }}</td><td>{{ i.nombre }}</td><td>{{ i.formula or '' }}</td><td>{{ i.frecuencia or '' }}</td><td>{{ i.rol }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+{% endif %}
+
+{% if f.mecanismos %}
+<h3 class="sub">Mecanismos de coordinación</h3>
+<table class="lista">
+  <tr><th style="width:10%">Código</th><th>Mecanismo</th><th style="width:14%">Rol</th><th style="width:20%">Frecuencia</th></tr>
+  {% for x in f.mecanismos %}<tr><td>{{ x.codigo }}</td><td>{{ x.nombre }}</td><td>{{ x.rol }}</td><td>{{ x.frecuencia or '' }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+
+{% if f.traspasos %}
+<h3 class="sub">Quién entrega qué a quién</h3>
+<table class="lista">
+  <tr><th style="width:25%">De</th><th style="width:25%">A</th><th>Qué entrega</th><th style="width:24%">Señal o condición</th></tr>
+  {% for t in f.traspasos %}<tr><td>{{ t.de }}</td><td>{{ t.a }}</td><td>{{ t.que_entrega }}</td><td>{{ t.senal or '' }}</td></tr>{% endfor %}
+</table>
+<p class="nota">Sin la señal o condición, el que recibe no actúa.</p>
+{% endif %}
+
+{% if f.notas %}
+<h3 class="sub">Notas</h3>
+{% for l in f.notas %}<p>{{ l }}</p>{% endfor %}
+{% endif %}
+{% endmacro %}

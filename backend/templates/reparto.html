@@ -17,10 +17,10 @@
     {% for pl in plantas %}<a class="{{ 'activa' if pl.id == planta_id }}" href="/ui/reparto/{{ puesto.codigo }}?planta_id={{ pl.id }}{% if etapa %}&etapa={{ etapa }}{% endif %}">{{ pl.nombre }}</a>{% endfor %}
   </div>
   {% endif %}
-  {% if requiere_etapa %}
+  {% if posiciones %}
   <div class="pestanas">
-    <a class="{{ 'activa' if not etapa }}" href="/ui/reparto/{{ puesto.codigo }}?planta_id={{ planta_id }}">Todas las etapas</a>
-    {% for e in etapas %}<a class="{{ 'activa' if e == etapa }}" href="/ui/reparto/{{ puesto.codigo }}?planta_id={{ planta_id }}&etapa={{ e }}">{{ e|capitalize }}</a>{% endfor %}
+    <a class="{{ 'activa' if not etapa }}" href="/ui/reparto/{{ puesto.codigo }}?planta_id={{ planta_id }}">Todas las posiciones</a>
+    {% for x in posiciones %}<a class="{{ 'activa' if x.clave == etapa }}" href="/ui/reparto/{{ puesto.codigo }}?planta_id={{ planta_id }}&etapa={{ x.clave }}">{{ x.nombre }}</a>{% endfor %}
   </div>
   {% endif %}
 

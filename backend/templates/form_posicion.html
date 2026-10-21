@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar posición" if posicion else "Nueva posición" }} — {{ puesto.codigo }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ ("Editar posición «" ~ posicion.nombre ~ "»") if posicion else "Nueva posición" }} — {{ puesto.codigo }} {{ puesto.nombre }}</h2>
+  <p class="meta">Una posición divide un puesto en partes que ocupan personas distintas (por ejemplo, Primario y Secundario en Trituración).
+    Si el puesto tiene posiciones, al asignar hay que elegir una; cada actividad puede ser común o propia de una posición.</p>
+  <form class="inline" method="post"
+        action="/ui/puestos/{{ puesto.codigo }}/posiciones/{{ (posicion.id ~ '/editar') if posicion else 'nueva' }}">
+    <label>Nombre</label>
+    <input type="text" name="nombre" required value="{{ posicion.nombre if posicion else '' }}">
+    {% if posicion %}<p class="meta" style="margin:0">Clave interna: <code>{{ posicion.clave }}</code> (no cambia aunque cambie el nombre).</p>{% endif %}
+    <label>Orden</label>
+    <input type="number" name="orden" value="{{ posicion.orden if posicion else 0 }}" style="max-width:120px">
+    <label>Su responsabilidad empieza</label>
+    <textarea name="alcance_inicio">{{ posicion.alcance_inicio or '' if posicion else '' }}</textarea>
+    <label>Su responsabilidad termina</label>
+    <textarea name="alcance_fin">{{ posicion.alcance_fin or '' if posicion else '' }}</textarea>
+    <label>Equipos de los que es titular (uno por línea)</label>
+    <textarea name="equipos">{{ posicion.equipos or '' if posicion else '' }}</textarea>
+    <label>Descripción</label>
+    <textarea name="descripcion">{{ posicion.descripcion or '' if posicion else '' }}</textarea>
+    <div class="actions">
+      <button type="submit" class="primary">Guardar</button>
+      <a href="/ui/puestos/{{ puesto.codigo }}#posiciones" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

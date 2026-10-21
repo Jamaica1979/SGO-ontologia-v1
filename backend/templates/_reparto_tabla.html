@@ -39,7 +39,8 @@
     {% for f in cob.filas %}
     <tr class="{{ 'sin-resp' if f.estado == 'sin_responsable' else ('doble' if f.estado == 'doble' else '') }}">
       <td><a href="/ui/actividades/{{ f.actividad.codigo }}">{{ f.actividad.codigo }}</a> — {{ f.actividad.descripcion }}
-        {% if f.actividad.es_critica %}<span class="tag crit">crítica</span>{% endif %}</td>
+        {% if f.actividad.es_critica %}<span class="tag crit">crítica</span>{% endif %}
+        {% if f.posicion %}<span class="tag warn">{{ pos_nombre(puesto.codigo, f.posicion) }}</span>{% endif %}</td>
       <td>
         {% set nombres = f.titulares|map(attribute='persona')|unique|list %}
         {% if f.estado == 'sin_responsable' %}<span class="tag crit">sin responsable</span>{% if f.cedida %} <span class="meta">cedida, nadie la tomó</span>{% endif %}

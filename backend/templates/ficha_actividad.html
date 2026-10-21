@@ -6,7 +6,9 @@
     <div class="avatar">{{ actividad.codigo[-2:] }}</div>
     <div>
       <h2>{{ actividad.codigo }}{% if not actividad.activo %} <span class="tag off">BAJA</span>{% endif %}</h2>
-      <p class="sub">{{ actividad.area }} · Nivel {{ actividad.nivel }}{% if actividad.es_critica %} · <span class="tag crit">crítica</span>{% endif %}</p>
+      <p class="sub">{{ actividad.area }} · Nivel {{ actividad.nivel }}{% if actividad.es_critica %} · <span class="tag crit">crítica</span>{% endif %}
+        {% if actividad.posicion %} · posición <span class="tag warn">{{ pos_nombre(actividad.puesto_codigo, actividad.posicion) }}</span>{% endif %}
+        {% if actividad.momento %} · {{ MOMENTO_TXT.get(actividad.momento, actividad.momento) }}{% endif %}</p>
     </div>
     <div style="margin-left:auto;display:flex;gap:8px">
       <a href="/ui/actividades/{{ actividad.codigo }}/editar" class="btn">Editar</a>

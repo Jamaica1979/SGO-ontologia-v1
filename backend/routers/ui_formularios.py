@@ -74,9 +74,10 @@ def ver_ficha(codigo: str, request: Request, db: Session = Depends(get_db)):
         elif linea.strip():
             c = [x.strip() for x in linea.split("|")]
             campos.append({"campo": c[0], "tipo": c[1] if len(c) > 1 else "", "obligatorio": c[2] if len(c) > 2 else "", "nota": c[3] if len(c) > 3 else ""})
+    puestos = db.query(m.PuestoFormulario).filter(m.PuestoFormulario.formulario_id == f.id).order_by(m.PuestoFormulario.puesto_codigo).all()
     return templates.TemplateResponse(request, "ficha_formulario.html", {
         "formulario": f, "procedimientos": procedimientos, "mecanismos": mecanismos,
-        "padre": padre, "partes": partes, "campos": campos, "nota_modelo": nota_modelo})
+        "padre": padre, "partes": partes, "campos": campos, "nota_modelo": nota_modelo, "puestos": puestos})
 
 
 @router.get("/{codigo}/editar", response_class=HTMLResponse)
@@ -118,6 +119,7 @@ def eliminar_formulario(codigo: str, db: Session = Depends(get_db)):
                          "emisor": f.emisor, "receptor": f.receptor, "frecuencia": f.frecuencia})
     db.query(m.ProcedimientoFormulario).filter(m.ProcedimientoFormulario.formulario_id == f.id).delete()
     db.query(m.MecanismoFormulario).filter(m.MecanismoFormulario.formulario_id == f.id).delete()
+    db.query(m.PuestoFormulario).filter(m.PuestoFormulario.formulario_id == f.id).delete()  # v3.9
     db.delete(f)
     db.commit()
     return RedirectResponse("/ui/listado/formularios", status_code=303)

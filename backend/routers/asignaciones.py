@@ -9,12 +9,16 @@ router = APIRouter(prefix="/api/asignaciones", tags=["Asignacion"], dependencies
 
 # ───────────────────────── helpers compartidos por las Actions ─────────────────────────
 
-def actividades_de_asignacion(db: Session, puesto_codigo, perfil_id, asignacion_id=None, planta_id=None):
+def actividades_de_asignacion(db: Session, puesto_codigo, perfil_id, asignacion_id=None, planta_id=None, etapa=None):
     """Actividades que una asignación cubre de verdad. Para un Puesto son todas las
     suyas MENOS las cedidas a otra persona (Opción A) — por eso hay que pasar
-    asignacion_id cuando se la conoce; sin él se devuelve el puesto completo."""
+    asignacion_id cuando se la conoce; sin él se devuelve el puesto completo.
+    v3.9: si el puesto tiene posiciones y se indica una (etapa), sólo las comunes
+    y las de esa posición."""
     if puesto_codigo:
-        ids = set(r[0] for r in db.query(m.Actividad.id).filter(m.Actividad.puesto_codigo == puesto_codigo, m.Actividad.activo == 1))
+        from posiciones import aplica
+        ids = set(r[0] for r in db.query(m.Actividad.id, m.Actividad.posicion).filter(
+            m.Actividad.puesto_codigo == puesto_codigo, m.Actividad.activo == 1) if aplica(r[1], etapa))
         if asignacion_id:
             ids -= set(r[0] for r in db.query(m.ActividadCedida.actividad_id).filter(m.ActividadCedida.asignacion_id == asignacion_id))
         if planta_id is not None:  # v3.7: lo que no aplica en esa planta no cuenta
@@ -53,7 +57,7 @@ def conflictos_exclusividad(db: Session, planta_id, actividad_ids, etapa=None, e
             continue
         if etapa and a.etapa and etapa != a.etapa:
             continue  # misma planta, línea de producción distinta — no choca
-        cubiertas = actividades_de_asignacion(db, a.puesto_codigo, a.perfil_id, a.id, a.planta_id)
+        cubiertas = actividades_de_asignacion(db, a.puesto_codigo, a.perfil_id, a.id, a.planta_id, a.etapa)
         choque = cubiertas & actividad_ids
         if choque:
             codigos = [c[0] for c in db.query(m.Actividad.codigo).filter(m.Actividad.id.in_(choque))]
@@ -132,19 +136,21 @@ def asignar_persona_a_puesto(body: dict, permitir_conflicto: bool = False, db: S
     puesto_codigo, perfil_id = body.get("puesto_codigo"), body.get("perfil_id")
     if bool(puesto_codigo) == bool(perfil_id):
         raise HTTPException(400, "La asignación va a un Puesto formal O a un Perfil — exactamente uno de los dos.")
-    if puesto_codigo in ("PRD-04", "PRD-05") and not body.get("etapa"):
-        raise HTTPException(400, f"{puesto_codigo} requiere indicar etapa: 'primaria' o 'secundaria'.")
-
     if puesto_codigo:
+        from posiciones import validar, requiere_posicion, normalizar
+        body["etapa"] = normalizar(body.get("etapa")) if requiere_posicion(db, puesto_codigo) else None
+        msg = validar(db, puesto_codigo, body["etapa"])
+        if msg:
+            raise HTTPException(400, msg)
         from aplicabilidad import mensaje_puesto_no_aplica
         msg = mensaje_puesto_no_aplica(db, puesto_codigo, body.get("planta_id"))
         if msg:
             raise HTTPException(400, msg)
-    cubiertas = actividades_de_asignacion(db, puesto_codigo, perfil_id, None, body.get("planta_id"))
+    cubiertas = actividades_de_asignacion(db, puesto_codigo, perfil_id, None, body.get("planta_id"), body.get("etapa"))
     scope_planta = None if es_sede_unica(db, puesto_codigo=puesto_codigo) else body["planta_id"]
     conflictos = conflictos_exclusividad(db, scope_planta, cubiertas, etapa=body.get("etapa"), excluir_persona_id=body.get("persona_id"))
     if conflictos and not permitir_conflicto:
-        raise HTTPException(409, {"mensaje": "Hay actividades que ya tienen responsable activo en esta planta/etapa.",
+        raise HTTPException(409, {"mensaje": "Hay actividades que ya tienen responsable activo en esta planta/posición.",
                                    "conflictos": conflictos})
 
     a = m.Asignacion(persona_id=body["persona_id"], puesto_codigo=puesto_codigo, perfil_id=perfil_id,
@@ -170,12 +176,12 @@ def actualizar(asignacion_id: int, body: dict, permitir_conflicto: bool = False,
     cambia_puesto = puesto_codigo != a.puesto_codigo
     # las cesiones pertenecen al puesto original: si la asignación pasa a otro puesto, no aplican
     cubiertas = actividades_de_asignacion(db, puesto_codigo, perfil_id, None if cambia_puesto else asignacion_id,
-                                          body.get("planta_id", a.planta_id))
+                                          body.get("planta_id", a.planta_id), body.get("etapa", a.etapa))
     scope_planta = None if es_sede_unica(db, puesto_codigo=puesto_codigo) else body.get("planta_id", a.planta_id)
     conflictos = conflictos_exclusividad(db, scope_planta, cubiertas, etapa=body.get("etapa", a.etapa),
                                           excluir_asignacion_id=asignacion_id, excluir_persona_id=body.get("persona_id", a.persona_id))
     if conflictos and not permitir_conflicto:
-        raise HTTPException(409, {"mensaje": "Hay actividades que ya tienen responsable activo en esta planta/etapa.",
+        raise HTTPException(409, {"mensaje": "Hay actividades que ya tienen responsable activo en esta planta/posición.",
                                    "conflictos": conflictos})
 
     antes = to_dict(a)
@@ -212,10 +218,12 @@ def finalizar_asignacion(asignacion_id: int, db: Session = Depends(get_db)):
 def reasignar_puesto(body: dict, permitir_conflicto: bool = False, db: Session = Depends(get_db)):
     puesto_codigo, planta_id, etapa = body["puesto_codigo"], body["planta_id"], body.get("etapa")
     from aplicabilidad import mensaje_puesto_no_aplica, excluidas_en_planta
-    msg = mensaje_puesto_no_aplica(db, puesto_codigo, planta_id)
+    from posiciones import validar, requiere_posicion, normalizar
+    etapa = normalizar(etapa) if requiere_posicion(db, puesto_codigo) else None
+    msg = mensaje_puesto_no_aplica(db, puesto_codigo, planta_id) or validar(db, puesto_codigo, etapa)
     if msg:
         raise HTTPException(400, msg)
-    actividad_ids = set(r[0] for r in db.query(m.Actividad.id).filter(m.Actividad.puesto_codigo == puesto_codigo)) - excluidas_en_planta(db, planta_id)
+    actividad_ids = actividades_de_asignacion(db, puesto_codigo, None, None, planta_id, etapa)
     scope_planta = None if es_sede_unica(db, puesto_codigo=puesto_codigo) else planta_id
     anteriores = asignaciones_vigentes_de_puesto(db, puesto_codigo, planta_id, etapa)
     heredadas = cesiones_de(db, anteriores)  # ya las lleva otra persona: no son conflicto
@@ -252,7 +260,7 @@ def asignar_actividad_suelta(body: dict, permitir_conflicto: bool = False, db: S
     scope_planta = None if es_sede_unica(db, actividad_ids=actividad_ids) else body["planta_id"]
     conflictos = conflictos_exclusividad(db, scope_planta, actividad_ids, etapa=body.get("etapa"), excluir_persona_id=body["persona_id"])
     if conflictos and not permitir_conflicto:
-        raise HTTPException(409, {"mensaje": "Alguna de estas actividades ya tiene responsable activo en esta planta/etapa.",
+        raise HTTPException(409, {"mensaje": "Alguna de estas actividades ya tiene responsable activo en esta planta/posición.",
                                    "conflictos": conflictos})
 
     from reparto import asignar_a_perfil_personal  # import diferido: reparto.py importa de este módulo

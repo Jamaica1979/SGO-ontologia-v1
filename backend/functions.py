@@ -115,14 +115,18 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
             return set(r[0] for r in db.query(m.PerfilActividad.actividad_id).filter(m.PerfilActividad.perfil_id == perfil_id_))
         return set()
 
+    from posiciones import mapa_posiciones, aplica as aplica_posicion, SIN_POSICION
+    posiciones = mapa_posiciones(db)   # v3.9: las posiciones son dato del puesto (antes: etapa fija en PRD-04/05)
+
     filas = []
     for p in puestos:
         act_puesto_total = {a.id: a for a in db.query(m.Actividad).filter(m.Actividad.puesto_codigo == p.codigo, m.Actividad.activo == 1)}
+        claves = posiciones.get(p.codigo)
+        ambitos = (tuple(claves) + (SIN_POSICION,)) if claves else (None,)
         if p.cardinalidad_esperada == "una_por_planta_activa":
-            scopes = [(pl, e) for pl in plantas for e in
-                      (("primaria", "secundaria", "sin_etapa") if p.codigo in ("PRD-04", "PRD-05") else (None,))]
+            scopes = [(pl, e) for pl in plantas for e in ambitos]
         else:
-            scopes = [(None, None)]
+            scopes = [(None, e) for e in ambitos]
 
         for pl, etapa in scopes:
             pl_id = pl.id if pl else None
@@ -131,24 +135,26 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
             ex_puesto = puestos_excl.get((p.codigo, pl_id)) if pl_id else None
             if ex_puesto and not ex_puesto["se_reparte"]:
                 continue  # el puesto no existe en esta planta ni hace falta cubrir sus actividades
-            act_puesto = {i: a for i, a in act_puesto_total.items() if not (pl_id and i in act_excl.get(pl_id, ()))}
+            act_puesto = {i: a for i, a in act_puesto_total.items() if not (pl_id and i in act_excl.get(pl_id, ()))
+                          and (etapa in (None, SIN_POSICION) or aplica_posicion(a.posicion, etapa))}
             if not act_puesto and act_puesto_total:
                 continue  # todo lo del puesto fue marcado como "no aplica" en esta planta
 
             def matchea(a):
                 if pl_id is not None and a.planta_id != pl_id:
                     return False
-                if etapa == "sin_etapa":
+                if etapa == SIN_POSICION:
                     return not a.etapa
                 if etapa is not None and a.etapa != etapa:
-                    return False
+                    # una actividad suelta (perfil) cargada sin posición vale para cualquier posición
+                    return bool(a.perfil_id) and not a.etapa
                 return True
 
             directas = [a for a in activas if a.puesto_codigo == p.codigo and matchea(a)]
             if ex_puesto:  # se_reparte: no hay titular posible; las actividades se cubren sólo por perfil
                 directas = []
-            if etapa == "sin_etapa" and not directas:
-                continue
+            if etapa == SIN_POSICION and not directas:
+                continue  # el ámbito «sin posición» sólo aparece si hay una asignación vieja sin posición
 
             # actividades de este puesto que ya lleva alguien por su Perfil individual en este ámbito
             ids_puesto = set(act_puesto.keys())
@@ -162,7 +168,7 @@ def calcular_cobertura(db: Session, planta_id: int = None, puesto_codigo: str = 
                         resp_perfil.append((a, interseccion))
 
             if directas:
-                estado_fila = "cubierta" if etapa != "sin_etapa" else "cubierta_sin_etapa"
+                estado_fila = "cubierta" if etapa != SIN_POSICION else "cubierta_sin_etapa"
                 responsables = [{"persona_id": a.persona_id, "persona": f"{a.persona.nombre} {a.persona.apellido}", "via": "puesto"} for a in directas]
                 # Opción A: lo que el titular cedió sólo cuenta como cubierto si otra persona lo lleva
                 ced_ids = set()
@@ -356,7 +362,8 @@ def construir_arbol_organizacional(db: Session, modo: str = "teorico", planta_id
                 continue
             etiqueta = f"{a.persona.nombre} {a.persona.apellido}"
             if a.etapa and a.etapa != "sin_etapa":
-                etiqueta += f" ({a.etapa})"
+                from posiciones import nombre as _pos_nombre
+                etiqueta += f" ({_pos_nombre(a.puesto_codigo, a.etapa)})"
             ocupantes_por_puesto.setdefault(a.puesto_codigo, []).append(etiqueta)
 
     def nodo(codigo):

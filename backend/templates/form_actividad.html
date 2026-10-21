@@ -29,6 +29,20 @@
       <option value="{{ p.codigo }}" {% if v and (v.puesto_codigo|string) == (p.codigo|string) %}selected{% endif %}>{{ p.codigo }} — {{ p.nombre }}</option>
       {% endfor %}
     </select>
+    <label>Posición dentro del puesto <span class="meta">(sólo si el puesto tiene posiciones; vacío = común a todas)</span></label>
+    <select name="posicion">
+      <option value="">— común a todas / sin posición —</option>
+      {% for x in posiciones %}
+      <option value="{{ x.clave }}" {% if v and v.posicion == x.clave and v.puesto_codigo == x.puesto_codigo %}selected{% endif %}>{{ x.puesto_codigo }} · {{ x.nombre }}</option>
+      {% endfor %}
+    </select>
+    <label>Momento de la jornada <span class="meta">(ordena las tareas en la ficha)</span></label>
+    <select name="momento">
+      <option value="">— sin momento —</option>
+      {% for k, txt in momentos %}<option value="{{ k }}" {% if v and v.momento == k %}selected{% endif %}>{{ txt }}</option>{% endfor %}
+    </select>
+    <label>Orden dentro de la ficha</label>
+    <input type="number" name="orden" value="{{ v.orden if v and v.orden is not none else '' }}" style="max-width:120px">
     <label>Función organizacional</label>
     <select name="funcion_organizacional_id">
       <option value="">— Sin función —</option>

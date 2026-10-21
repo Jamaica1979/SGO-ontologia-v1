@@ -1,0 +1,15 @@
+{# v3.9: encabezado + coberturas + sugerencias, para refrescarlos juntos después de asignar #}
+  <h3>Lo que ocupa hoy — {{ coberturas|length }} cobertura{{ "" if coberturas|length == 1 else "s" }}</h3>
+  <div id="coberturas">{% include "_coberturas.html" %}</div>
+
+  {% if sugerencias %}
+  <div class="aviso-ok" style="background:var(--warn-bg);border-color:var(--warn)">
+    <b>Para empezar:</b> esta persona todavía no tiene coberturas. Hoy hay puestos o actividades sin cubrir, por ejemplo:
+    <ul style="margin:6px 0 0;padding-left:18px">
+      {% for f in sugerencias %}<li><a href="/ui/reparto/{{ f.puesto_codigo }}{% if f.planta_id %}?planta_id={{ f.planta_id }}{% if f.etapa and f.etapa != 'sin_etapa' %}&etapa={{ f.etapa }}{% endif %}{% endif %}"><b>{{ f.puesto_codigo }}</b> — {{ f.puesto_nombre }}{% if f.etapa %} · {{ pos_nombre(f.puesto_codigo, f.etapa) }}{% endif %}</a>
+        <span class="meta">· {{ f.planta_nombre }} · {{ 'sin responsable' if f.estado == 'sin_asignar' else (f.n_sin_cubrir ~ ' actividad(es) sin cubrir') }}</span></li>{% endfor %}
+    </ul>
+    <a href="/ui/reportes/cobertura?solo_pendientes=1">Ver todos los pendientes →</a>
+  </div>
+  {% endif %}
+

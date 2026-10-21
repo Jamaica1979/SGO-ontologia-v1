@@ -23,15 +23,32 @@
       {% endif %}
     </div>
   </div>
-  {% if puesto.proposito %}<p style="margin-top:14px">{{ puesto.proposito }}</p>{% endif %}
+  {% if puesto.proposito %}<p style="margin-top:14px"><b>Misión:</b> {{ puesto.proposito }}</p>{% endif %}
 
   <h3>Relaciones</h3>
   <p style="font-size:13px">
     <b>Reporta a:</b>
-    {% for r in reporta_a %}<a href="/ui/puestos/{{ r }}">{{ r }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="empty">—</span>{% endfor %}
+    {% for r in ficha.reporta_a %}<a href="/ui/puestos/{{ r.codigo }}" title="{{ r.nombre }}">{{ r.codigo }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="empty">—</span>{% endfor %}
     &nbsp;&nbsp;<b>Coordina con:</b>
-    {% for r in coordina_con %}<a href="/ui/puestos/{{ r }}">{{ r }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="empty">—</span>{% endfor %}
+    {% for r in ficha.coordina_con %}<a href="/ui/puestos/{{ r.codigo }}" title="{{ r.nombre }}">{{ r.codigo }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="empty">—</span>{% endfor %}
+    &nbsp;&nbsp;<b>Supervisa a:</b>
+    {% for r in ficha.supervisa_a %}<a href="/ui/puestos/{{ r.codigo }}" title="{{ r.nombre }}">{{ r.codigo }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="empty">nadie</span>{% endfor %}
   </p>
+
+  {% set hay_ficha = puesto.dotacion or puesto.reemplaza_a or puesto.alcance_inicio or puesto.alcance_fin or puesto.equipos or puesto.limites_autoridad or puesto.medicion_desempeno or puesto.notas_ficha %}
+  <details class="bloque" {{ 'open' if hay_ficha }}>
+    <summary><b>Ficha del puesto</b> <span class="meta">— dotación, alcance, equipos, límites y cómo se mide{% if not hay_ficha %} (sin cargar: se completa desde «Editar»){% endif %}</span></summary>
+    <table class="tabla ficha-datos">
+      {% if puesto.dotacion %}<tr><th>Dotación</th><td>{{ puesto.dotacion }}</td></tr>{% endif %}
+      {% if puesto.reemplaza_a %}<tr><th>Reemplaza a</th><td>{{ puesto.reemplaza_a }}</td></tr>{% endif %}
+      {% if puesto.alcance_inicio %}<tr><th>Su responsabilidad empieza</th><td>{{ puesto.alcance_inicio }}</td></tr>{% endif %}
+      {% if puesto.alcance_fin %}<tr><th>Su responsabilidad termina</th><td>{{ puesto.alcance_fin }}</td></tr>{% endif %}
+      {% if puesto.equipos %}<tr><th>Equipos a su cargo</th><td><ul>{% for l in puesto.equipos|lineas %}<li>{{ l }}</li>{% endfor %}</ul></td></tr>{% endif %}
+      {% if puesto.limites_autoridad %}<tr><th>Límites que no se negocian</th><td><ul>{% for l in puesto.limites_autoridad|lineas %}<li>{{ l }}</li>{% endfor %}</ul></td></tr>{% endif %}
+      {% if puesto.medicion_desempeno %}<tr><th>Cómo se mide su desempeño</th><td><ul>{% for l in puesto.medicion_desempeno|lineas %}<li>{{ l }}</li>{% endfor %}</ul></td></tr>{% endif %}
+      {% if puesto.notas_ficha %}<tr><th>Notas</th><td>{% for l in puesto.notas_ficha|lineas %}<p style="margin:0 0 4px">{{ l }}</p>{% endfor %}</td></tr>{% endif %}
+    </table>
+  </details>
 
   {% if rol_transicion %}
   <div class="conflict-box" id="rol-transicion" style="background:#FBF3DF;border-left-color:#B8860B">
@@ -42,6 +59,30 @@
     </form>
   </div>
   {% endif %}
+
+  <h3 id="posiciones">Posiciones{% if posiciones_todas %} — {{ ficha.posiciones|length }}{% endif %}</h3>
+  {% if posiciones_todas %}
+  <p class="meta">Cada persona se asigna a una posición. Lleva las tareas comunes del puesto más las de su posición.</p>
+  {% for x in posiciones_todas %}
+  <div class="row">
+    <div class="main">
+      <div><b>{{ x.nombre }}</b>{% if not x.activo %} <span class="tag off">BAJA</span>{% endif %}</div>
+      <div class="meta">
+        {% if x.alcance_inicio %}Empieza: {{ x.alcance_inicio }}. {% endif %}{% if x.alcance_fin %}Termina: {{ x.alcance_fin }}.{% endif %}
+        {% if x.equipos %}<br>Equipos: {{ (x.equipos|lineas)|join('; ') }}{% endif %}
+      </div>
+    </div>
+    <a class="btn" href="/ui/puestos/{{ puesto.codigo }}/posiciones/{{ x.id }}/editar">Editar</a>
+    <form method="post" action="/ui/puestos/{{ puesto.codigo }}/posiciones/{{ x.id }}/{{ 'baja' if x.activo else 'alta' }}"
+          {% if x.activo %}onsubmit="return confirm('¿Dar de baja la posición {{ x.nombre }}?');"{% endif %}>
+      <button type="submit" class="btn">{{ 'Dar de baja' if x.activo else 'Dar de alta' }}</button>
+    </form>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="meta">Este puesto no tiene posiciones: se asigna directamente (persona y planta).</p>
+  {% endif %}
+  <p><a class="btn" href="/ui/puestos/{{ puesto.codigo }}/posiciones/nueva">+ Agregar posición</a></p>
 
   <h3>Quién lo ocupa hoy, por planta</h3>
   <div id="ocupantes">
@@ -59,9 +100,81 @@
   </details>
 
   <h3>Actividades — {{ actividades|length }}</h3>
-  {% for a in actividades %}
-  <div class="row"><div class="main"><a href="/ui/actividades/{{ a.codigo }}">{{ a.codigo }}</a> — {{ a.descripcion }}{% if a.es_critica %} <span class="tag crit">crítica</span>{% endif %}</div></div>
-  {% endfor %}
+  {% for b in ficha.bloques_tareas %}
+    {% if b.titulo %}<h4 class="subtitulo">{{ b.titulo }}</h4>{% endif %}
+    {% for momento, acts in b.grupos %}
+      {% if momento %}<div class="momento">{{ momento }}</div>{% endif %}
+      {% for a in acts %}
+      <div class="row"><div class="main"><a href="/ui/actividades/{{ a.codigo }}">{{ a.codigo }}</a> — {{ a.descripcion }}{% if a.es_critica %} <span class="tag crit">crítica</span>{% endif %}</div></div>
+      {% endfor %}
+    {% endfor %}
+  {% else %}<p class="empty">Sin actividades cargadas.</p>{% endfor %}
+
+  <h3 id="procedimientos">Procedimientos que aplica — {{ ficha.procedimientos|length }}</h3>
+  {% for pr in ficha.procedimientos %}
+  <div class="row">
+    <div class="main"><a href="/ui/procedimientos/{{ pr.codigo }}">{{ pr.codigo }}</a> — {{ pr.nombre }} <span class="tag off">{{ pr.rol }}</span>
+      {% set suyos = pr.pasos|selectattr('es_suyo')|list %}
+      <div class="meta">{{ pr.pasos|length }} paso{{ '' if pr.pasos|length == 1 else 's' }}{% if suyos %} · {{ suyos|length }} a cargo de este puesto{% endif %}</div></div>
+    {% set vinc = procedimientos_disp|selectattr('codigo', 'equalto', pr.codigo)|first %}
+    <form method="post" action="/ui/puestos/{{ puesto.codigo }}/procedimientos/{{ vinc.id if vinc else 0 }}/quitar"
+          onsubmit="return confirm('¿Quitar {{ pr.codigo }} de este puesto? (si algún paso sigue a cargo del puesto, el procedimiento seguirá apareciendo)');">
+      <button type="submit" class="btn">Quitar</button></form>
+  </div>
+  {% else %}<p class="empty">Sin procedimientos vinculados.</p>{% endfor %}
+  <form method="post" action="/ui/puestos/{{ puesto.codigo }}/procedimientos" class="fila-form">
+    <select name="procedimiento_id" required><option value="">— vincular procedimiento —</option>
+      {% for pr in procedimientos_disp %}<option value="{{ pr.id }}">{{ pr.codigo }} — {{ pr.nombre }}</option>{% endfor %}</select>
+    <select name="rol"><option value="ejecuta">ejecuta</option><option value="aprueba">aprueba</option><option value="recibe">recibe</option></select>
+    <button type="submit" class="btn">Vincular</button>
+  </form>
+
+  <h3 id="formularios">Formularios que completa — {{ ficha.formularios|length }}</h3>
+  {% if ficha.formularios %}
+  <table class="tabla">
+    <thead><tr><th>Formulario</th><th>Rol</th><th>Para qué sirve</th><th>Cuándo y a quién se entrega</th><th></th></tr></thead>
+    <tbody>
+    {% for f in ficha.formularios %}
+    <tr><td><a href="/ui/formularios/{{ f.codigo }}">{{ f.codigo }}</a> — {{ f.nombre }}{% if f.padre %} <span class="meta">(parte del {{ f.padre }})</span>{% endif %}</td>
+        <td>{{ f.rol }}</td><td>{{ f.para_que or '' }}</td><td>{{ f.cuando or '' }}</td>
+        <td><form method="post" action="/ui/puestos/{{ puesto.codigo }}/formularios/{{ f.id }}/quitar" onsubmit="return confirm('¿Quitar {{ f.codigo }} de este puesto?');"><button type="submit" class="btn">Quitar</button></form></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty">Sin formularios vinculados.</p>{% endif %}
+  <details class="bloque">
+    <summary>+ Vincular un formulario <span class="meta">(si ya está vinculado con el mismo rol, se actualizan los textos)</span></summary>
+    <form method="post" action="/ui/puestos/{{ puesto.codigo }}/formularios" class="inline">
+      <label>Formulario</label>
+      <select name="formulario_id" required><option value="">— elegir —</option>
+        {% for f in formularios_disp %}<option value="{{ f.id }}">{{ f.codigo }} — {{ f.nombre }}</option>{% endfor %}</select>
+      <label>Rol</label>
+      <select name="rol"><option value="completa">completa</option><option value="recibe">recibe</option><option value="consolida">consolida</option></select>
+      <label>Para qué sirve</label><input type="text" name="para_que">
+      <label>Cuándo y a quién se entrega</label><input type="text" name="cuando">
+      <label>Orden</label><input type="number" name="orden" value="0" style="max-width:100px">
+      <div class="actions"><button type="submit" class="primary">Vincular</button></div>
+    </form>
+  </details>
+
+  <h3 id="traspasos">Quién entrega qué a quién</h3>
+  {% macro fila_traspaso(tr) %}
+  <div class="row">
+    <div class="main">
+      <div>{% if tr.de_codigo and tr.de_codigo != puesto.codigo %}<a href="/ui/puestos/{{ tr.de_codigo }}">{{ tr.de }}</a>{% else %}<b>{{ tr.de }}</b>{% endif %}
+        → {% if tr.a_codigo and tr.a_codigo != puesto.codigo %}<a href="/ui/puestos/{{ tr.a_codigo }}">{{ tr.a }}</a>{% else %}<b>{{ tr.a }}</b>{% endif %}:
+        {{ tr.que_entrega }}</div>
+      {% if tr.senal %}<div class="meta">Señal o condición: {{ tr.senal }}</div>{% endif %}
+    </div>
+    <a class="btn" href="/ui/puestos/{{ puesto.codigo }}/traspasos/{{ tr.id }}/editar">Editar</a>
+    <form method="post" action="/ui/puestos/{{ puesto.codigo }}/traspasos/{{ tr.id }}/quitar" onsubmit="return confirm('¿Quitar este traspaso?');"><button type="submit" class="btn">Quitar</button></form>
+  </div>
+  {% endmacro %}
+  <h4 class="subtitulo">Recibe</h4>
+  {% for tr in ficha.traspasos_recibe %}{{ fila_traspaso(tr) }}{% else %}<p class="empty">Nada cargado.</p>{% endfor %}
+  <h4 class="subtitulo">Entrega</h4>
+  {% for tr in ficha.traspasos_entrega %}{{ fila_traspaso(tr) }}{% else %}<p class="empty">Nada cargado.</p>{% endfor %}
+  <p><a class="btn" href="/ui/puestos/{{ puesto.codigo }}/traspasos/nuevo">+ Agregar traspaso</a></p>
 
   <h3>Mecanismos de coordinación donde participa</h3>
   {% if mecanismos %}

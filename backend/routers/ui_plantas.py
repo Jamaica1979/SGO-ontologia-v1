@@ -94,12 +94,13 @@ def dar_de_alta(planta_id: int, db: Session = Depends(get_db)):
 @router.post("/{planta_id}/asignar", response_class=HTMLResponse)
 def asignar(planta_id: int, request: Request, db: Session = Depends(get_db),
             puesto_codigo: str = Form(...), etapa: str = Form(None), persona_id: int = Form(...),
-            permitir_conflicto: bool = Form(False)):
-    etapa = etapa if etapa and etapa != "None" else None
-    ok, conflictos = asignar_o_reasignar(db, puesto_codigo, planta_id, etapa, persona_id, permitir_conflicto)
+            permitir_conflicto: bool = Form(False), sumar: bool = Form(False)):
+    from posiciones import normalizar
+    etapa = normalizar(etapa)
+    ok, conflictos = asignar_o_reasignar(db, puesto_codigo, planta_id, etapa, persona_id, permitir_conflicto, sumar)
     if not ok:
         return templates.TemplateResponse(request, "_cobertura_conflicto.html", {
-            "puesto_codigo": puesto_codigo, "planta_id": planta_id, "etapa": etapa, "persona_id": persona_id,
+            "puesto_codigo": puesto_codigo, "planta_id": planta_id, "etapa": etapa, "persona_id": persona_id, "sumar": sumar,
             "conflictos": conflictos, "accion_url": f"/ui/plantas/{planta_id}/asignar"})
     fila = next((f for f in calcular_cobertura(db, puesto_codigo=puesto_codigo) if f["planta_id"] == planta_id and f["etapa"] == etapa), None)
     return templates.TemplateResponse(request, "_cobertura_fila.html", {

@@ -2,7 +2,7 @@
   <p>⚠️ <b>Otras actividades de este puesto ya tienen responsable:</b></p>
   <ul>
     {% for c in conflictos %}
-    <li>{{ c.persona }} ({{ c.puesto_codigo or 'perfil' }}{% if c.etapa %}, {{ c.etapa }}{% endif %}) ya cubre: {{ c.actividades_en_conflicto|join(', ') }}</li>
+    <li>{{ c.persona }} ({{ c.puesto_codigo or 'perfil' }}{% if c.etapa %}, {{ pos_nombre(c.puesto_codigo, c.etapa) }}{% endif %}) ya cubre: {{ c.actividades_en_conflicto|join(', ') }}</li>
     {% endfor %}
   </ul>
   <form hx-post="{{ accion_url }}" hx-target="closest .conflict-box" hx-swap="outerHTML">
@@ -11,6 +11,7 @@
     <input type="hidden" name="etapa" value="{{ etapa or '' }}">
     <input type="hidden" name="persona_id" value="{{ persona_id }}">
     <input type="hidden" name="permitir_conflicto" value="true">
+    {% if sumar %}<input type="hidden" name="sumar" value="true">{% endif %}
     <div class="actions">
       <button type="submit" class="danger">Confirmar de todas formas</button>
       <a href="javascript:location.reload()" class="btn">Cancelar</a>

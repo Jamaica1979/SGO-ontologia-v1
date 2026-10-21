@@ -65,6 +65,15 @@ class Puesto(Base):
     vigente = Column(Integer, server_default="1")
     created_at = Column(Text, server_default=NOW)
     updated_at = Column(Text, server_default=NOW)
+    # Campos de la ficha de puesto (v3.9). Todos opcionales: los puestos que no los
+    # tienen cargados se ven igual que antes.
+    dotacion = Column(Text)             # "Dos por planta, una por posición"
+    reemplaza_a = Column(Text)          # referencia histórica en texto
+    alcance_inicio = Column(Text)       # dónde empieza su responsabilidad
+    alcance_fin = Column(Text)          # dónde termina
+    equipos = Column(Text)              # equipos a su cargo, uno por línea (hasta que exista el inventario)
+    medicion_desempeno = Column(Text)   # cómo se mide su desempeño, uno por línea
+    notas_ficha = Column(Text)          # texto libre que se imprime en la ficha (autoridad, pendientes, etc.)
 
     convenio = relationship("ConvenioColectivo")
 
@@ -128,6 +137,10 @@ class Actividad(Base):
     funcion_organizacional_id = Column(Integer, ForeignKey("funciones_organizacionales.id"))  # nullable
     created_at = Column(Text, server_default=NOW)
     updated_at = Column(Text, server_default=NOW)
+    # v3.9 — ficha por momento de la jornada y posición dentro del puesto
+    posicion = Column(Text)   # clave de Posicion del mismo puesto; NULL = común a todas las posiciones
+    momento = Column(Text)    # antes | durante | cierre | falla ; NULL = sin momento (puestos que no lo usan)
+    orden = Column(Integer)   # orden dentro de la ficha
     # nota: NO hay columna convenio acá — se elimina, era redundante (Sección 12, punto 3).
 
     puesto = relationship("Puesto", foreign_keys=[puesto_codigo])
@@ -256,6 +269,44 @@ class Formulario(Base):
     estructura = Column(Text)   # modelo del formulario: un campo por línea ("Campo | tipo | obligatorio")
 
 
+class Posicion(Base):
+    """v3.9 — Una posición dentro de un puesto (p. ej. Trituración: Primario /
+    Secundario y Terciario). Reemplaza la «etapa» que estaba fija en el código para
+    PRD-04 y PRD-05: ahora es un dato del puesto. Si un puesto tiene posiciones,
+    cada asignación indica una; cada actividad es común o propia de una posición.
+    La clave se guarda en Actividad.posicion y en Asignacion.etapa (nombre de
+    columna heredado, se conserva para no reescribir la tabla)."""
+    __tablename__ = "posiciones"
+    id = Column(Integer, primary_key=True)
+    puesto_codigo = Column(Text, ForeignKey("puestos.codigo"), nullable=False)
+    clave = Column(Text, nullable=False)       # slug estable: 'primario', 'secundario'
+    nombre = Column(Text, nullable=False)      # lo que se ve: 'Secundario y Terciario'
+    orden = Column(Integer, server_default="0")
+    descripcion = Column(Text)
+    alcance_inicio = Column(Text)
+    alcance_fin = Column(Text)
+    equipos = Column(Text)
+    activo = Column(Integer, server_default="1")
+    created_at = Column(Text, server_default=NOW)
+    __table_args__ = (UniqueConstraint("puesto_codigo", "clave"),)
+
+
+class Traspaso(Base):
+    """v3.9 — Quién entrega qué a quién (Anexo B de las fichas). Los extremos pueden
+    ser un puesto del sistema o un texto («Responsable de voladura», «Pañolero o
+    designado») cuando todavía no es un puesto. Es la base del diagrama de flujo."""
+    __tablename__ = "traspasos"
+    id = Column(Integer, primary_key=True)
+    de_puesto_codigo = Column(Text, ForeignKey("puestos.codigo"))
+    de_texto = Column(Text)        # cómo se lee el emisor (si hay puesto, puede precisar la posición)
+    a_puesto_codigo = Column(Text, ForeignKey("puestos.codigo"))
+    a_texto = Column(Text)
+    que_entrega = Column(Text, nullable=False)
+    senal = Column(Text)           # señal o condición sin la cual el que recibe no actúa
+    orden = Column(Integer, server_default="0")
+    created_at = Column(Text, server_default=NOW)
+
+
 # ═══════════════════════ JUNCTION OBJECTS ═══════════════════════
 
 class Asignacion(Base):
@@ -268,7 +319,7 @@ class Asignacion(Base):
     puesto_codigo = Column(Text, ForeignKey("puestos.codigo"))   # nullable — XOR con perfil_id
     perfil_id = Column(Integer, ForeignKey("perfiles.id"))       # nullable — XOR con puesto_codigo
     planta_id = Column(Integer, ForeignKey("plantas.id"), nullable=False)
-    etapa = Column(Text)  # nullable: 'primaria' | 'secundaria'
+    etapa = Column(Text)  # v3.9: clave de la Posición del puesto (nombre de columna heredado de 'etapa'); NULL si el puesto no tiene posiciones
     estado = Column(Text, server_default="activa")  # activa|transicion|finalizada
     fecha_inicio = Column(Text)
     fecha_fin_estimada = Column(Text)
@@ -400,6 +451,22 @@ class ProcedimientoPuesto(Base):
     procedimiento_id = Column(Integer, ForeignKey("procedimientos.id"), primary_key=True)
     puesto_codigo = Column(Text, ForeignKey("puestos.codigo"), primary_key=True)
     rol = Column(Text, server_default="ejecuta")  # ejecuta|aprueba|recibe
+
+
+class PuestoFormulario(Base):
+    """v3.9 — Formularios que completa (o recibe) un puesto, tal como los lista la
+    ficha: para qué sirve y cuándo y a quién se entrega."""
+    __tablename__ = "puesto_formularios"
+    id = Column(Integer, primary_key=True)
+    puesto_codigo = Column(Text, ForeignKey("puestos.codigo"), nullable=False)
+    formulario_id = Column(Integer, ForeignKey("formularios.id"), nullable=False)
+    rol = Column(Text, server_default="completa")   # completa | recibe | consolida
+    para_que = Column(Text)
+    cuando = Column(Text)
+    orden = Column(Integer, server_default="0")
+    __table_args__ = (UniqueConstraint("puesto_codigo", "formulario_id", "rol"),)
+
+    formulario = relationship("Formulario")
 
 
 class ProcedimientoFormulario(Base):

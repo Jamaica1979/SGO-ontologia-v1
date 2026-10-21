@@ -13,7 +13,7 @@
 <details class="bloque" {% if abrir|default(true) %}open{% endif %}>
   <summary>
     <strong>{{ b.puesto_codigo }}</strong> — {{ b.puesto_nombre }}
-    <span class="meta">· {{ b.planta }}{% if b.etapa and b.etapa != 'sin_etapa' %} · {{ b.etapa }}{% endif %} · lleva {{ b.propias|length }} de {{ b.total_puesto }}</span>
+    <span class="meta">· {{ b.planta }}{% if b.etapa %} · {{ pos_nombre(b.puesto_codigo, b.etapa) }}{% endif %} · lleva {{ b.propias|length }} de {{ b.total_puesto }}</span>
   </summary>
   {% for a in b.propias %}{{ linea(a) }}{% else %}<p class="empty">No lleva ninguna actividad propia de este puesto.</p>{% endfor %}
   {% if b.cedidas %}

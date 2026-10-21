@@ -1,92 +1,53 @@
-<html><head><style>
-@page { size: A4; margin: 1.8cm 1.8cm; }
-body { font-family: Helvetica, Arial, sans-serif; color:#1A1A1A; font-size:10pt; line-height:1.45; }
-.header { background-color:#0A2640; padding:16px 20px; margin-bottom:14px; }
-.header .brand { color:#E0A82E; font-size:9pt; font-weight:bold; margin:0 0 4px 0; }
-.header h1 { color:#ffffff; font-size:19pt; margin:0 0 2px 0; }
-.header .sub { color:#CADCFC; font-size:10.5pt; margin:0; }
-.resumen { background-color:#F5F7FA; padding:8px 12px; margin-bottom:10px; font-size:10pt; }
-h2.sec { font-size:11pt; color:#E0A82E; background-color:#0A2640; padding:6px 12px; margin:16px 0 8px 0; }
-h3.sub { font-size:10pt; color:#0A2640; margin:10px 0 3px 0; }
-.crit { color:#B0413E; font-weight:bold; font-size:7.5pt; }
-.row { padding:4px 0; border-bottom:1px solid #EEF1F4; font-size:9.5pt; }
-.meta { color:#6B7785; font-size:9pt; }
-.nota { color:#6B7785; font-size:8.5pt; font-style:italic; }
-.footer { margin-top:20px; padding-top:10px; border-top:1px solid #DDE4EC; font-size:8pt; color:#6B7785; text-align:center; }
-</style></head><body>
+<html><head><meta charset="utf-8">{% include "_pdf_estilos.html" %}</head><body>
+{% from "_pdf_ficha_bloque.html" import bloque_ficha %}
+<div id="pie">{{ persona.nombre_completo }} · Ficha de puesto · {{ fecha }} · página <pdf:pagenumber> de <pdf:pagecount></div>
 
-<div class="header">
-    <p class="brand">CANTERA ELDORADO S.A. - SISTEMA DE GESTIÓN ORGANIZACIONAL</p>
-    <h1>{{ persona.nombre }} {{ persona.apellido }}</h1>
-    <p class="sub">Ficha de reestructuración — cómo queda su rol</p>
-</div>
+<table class="header"><tr><td>
+  <p class="brand">CANTERA ELDORADO S.A. — SISTEMA DE GESTIÓN ORGANIZACIONAL</p>
+  <h1>{{ persona.nombre_completo }}</h1>
+  <p class="sub">Ficha de puesto — todo lo que le incumbe: tareas, procedimientos, formularios y límites</p>
+</td></tr></table>
+
+<table class="ident">
+  <tr><th>Legajo</th><td>{{ persona.legajo or '—' }}</td><th>Fecha de emisión</th><td>{{ fecha }}</td></tr>
+  <tr><th>Planta</th><td>{{ a_cargo.plantas|join(', ') or '—' }}</td><th>Cargo en nómina</th><td>{{ persona.cargo_nomina or '—' }}</td></tr>
+</table>
 
 {% if a_cargo.n_total or a_cargo.n_cedidas %}
 <div class="resumen">
-    <b>{{ a_cargo.n_total }} actividad{{ "" if a_cargo.n_total == 1 else "es" }} a cargo</b>
-    ({{ a_cargo.n_propias }} de su puesto{% if a_cargo.n_recibidas %} + {{ a_cargo.n_recibidas }} recibida{{ "" if a_cargo.n_recibidas == 1 else "s" }} de otros puestos{% endif %})
-    {% if a_cargo.n_criticas %} - {{ a_cargo.n_criticas }} crítica{{ "" if a_cargo.n_criticas == 1 else "s" }}{% endif %}
-    {% if a_cargo.n_cedidas %} - {{ a_cargo.n_cedidas }} cedida{{ "" if a_cargo.n_cedidas == 1 else "s" }} a otras personas{% endif %}
+  <b>{{ a_cargo.n_total }} tarea{{ "" if a_cargo.n_total == 1 else "s" }} a cargo</b>
+  ({{ a_cargo.n_propias }} de su{{ "" if puestos|length == 1 else "s" }} puesto{{ "" if puestos|length == 1 else "s" }}{% if a_cargo.n_recibidas %} + {{ a_cargo.n_recibidas }} recibida{{ "" if a_cargo.n_recibidas == 1 else "s" }} de otros puestos{% endif %}){% if a_cargo.n_criticas %} · {{ a_cargo.n_criticas }} crítica{{ "" if a_cargo.n_criticas == 1 else "s" }}{% endif %}{% if a_cargo.n_cedidas %} · {{ a_cargo.n_cedidas }} de su puesto las lleva otra persona{% endif %}
 </div>
 {% else %}
-<p>Por ahora no tiene actividades asignadas.</p>
+<div class="resumen">Por ahora no tiene puestos ni tareas asignadas.</div>
 {% endif %}
 
-{% if puestos %}
-<h2 class="sec">SU PUESTO</h2>
 {% for p in puestos %}
-<h3 class="sub">{{ p.codigo }} - {{ p.nombre }} <span class="meta">({{ p.planta }}{% if p.etapa and p.etapa != 'sin_etapa' %}, {{ p.etapa }}{% endif %})</span></h3>
-{% if p.proposito %}<p><b>Propósito:</b> {{ p.proposito }}</p>{% endif %}
-<p class="meta"><b>Reporta a:</b> {{ p.reporta_a|join(', ') or '-' }}{% if p.coordina_con %} &nbsp;&nbsp; <b>Coordina con:</b> {{ p.coordina_con|join(', ') }}{% endif %}</p>
+  {% set enc = p.codigo ~ " — " ~ p.nombre ~ ((" · posición " ~ p.posicion_nombre) if p.posicion_nombre else "") ~ " · " ~ p.planta %}
+  {{ bloque_ficha(p.ficha, enc, cedidas=p.cedidas, salto=not loop.first) }}
+{% endfor %}
+
+{% if recibidos %}
+<h2 class="sec" {% if puestos %}style="page-break-before: always"{% endif %}>TAREAS QUE RECIBE DE OTROS PUESTOS</h2>
+<p class="meta">Son tareas de otro puesto que esta persona lleva de manera individual. Los procedimientos y formularios se listan
+  por el puesto de origen completo: conviene confirmar cuáles aplican a estas tareas.</p>
+{% for r in recibidos %}
+  <p class="bloque-tit">De {{ r.codigo or '—' }} {{ r.nombre }} · {{ r.planta }}{% if r.posicion_nombre %} · posición {{ r.posicion_nombre }}{% endif %}{% if r.titulares %} <span class="meta">(titular del puesto: {{ r.titulares|join(', ') }})</span>{% endif %}</p>
+  <table class="tareas">
+    {% for a in r.actividades %}<tr><td class="num">–</td><td>{{ a.descripcion }}{% if a.es_critica %} <span class="crit">CRÍTICA</span>{% endif %} <span class="cod">{{ a.codigo }}</span></td></tr>{% endfor %}
+  </table>
+  {% if r.procedimientos %}<p class="meta"><b>Procedimientos del puesto de origen:</b> {{ r.procedimientos|join('; ') }}</p>{% endif %}
+  {% if r.formularios %}<p class="meta"><b>Formularios del puesto de origen:</b> {{ r.formularios|join('; ') }}</p>{% endif %}
 {% endfor %}
 {% endif %}
 
-{% for b in a_cargo.bloques_propios %}
-<h2 class="sec">ACTIVIDADES QUE LLEVA — {{ b.puesto_codigo }} ({{ b.propias|length }} de {{ b.total_puesto }})</h2>
-{% for a in b.propias %}
-<div class="row">{{ a.codigo }} - {{ a.descripcion }}{% if a.es_critica %} <span class="crit">CRÍTICA</span>{% endif %}</div>
-{% else %}<p class="meta">No lleva actividades propias de este puesto.</p>{% endfor %}
-{% if b.cedidas %}
-<h3 class="sub">Actividades de su puesto que lleva otra persona</h3>
-{% for c in b.cedidas %}
-<div class="row">{{ c.actividad.codigo }} - {{ c.actividad.descripcion }} <span class="meta">- la lleva: {{ c.a_cargo_de|join(', ') or 'a definir' }}</span></div>
-{% endfor %}
-{% endif %}
-{% endfor %}
-
-{% if a_cargo.bloques_recibidos %}
-<h2 class="sec">ACTIVIDADES QUE RECIBE DE OTROS PUESTOS ({{ a_cargo.n_recibidas }})</h2>
-{% for b in a_cargo.bloques_recibidos %}
-<h3 class="sub">De {{ b.puesto_codigo or '-' }} - {{ b.puesto_nombre }} {% if b.titulares %}<span class="meta">(titular del puesto: {{ b.titulares|join(', ') }})</span>{% endif %}</h3>
-{% for a in b.actividades %}
-<div class="row">{{ a.codigo }} - {{ a.descripcion }}{% if a.es_critica %} <span class="crit">CRÍTICA</span>{% endif %}</div>
-{% endfor %}
-{% endfor %}
-{% endif %}
-
-{% set hay_coord = puestos|selectattr('mecanismos')|list or puestos|selectattr('procedimientos')|list or puestos|selectattr('indicadores')|list %}
-{% if hay_coord %}
-<h2 class="sec">COORDINACIÓN, PROCEDIMIENTOS E INDICADORES DE SU PUESTO</h2>
-{% for p in puestos %}
-{% if p.mecanismos or p.procedimientos or p.indicadores %}
-<h3 class="sub">{{ p.codigo }}</h3>
-{% if p.mecanismos %}<p><b>Mecanismos de coordinación:</b> {{ p.mecanismos|join('; ') }}</p>{% endif %}
-{% if p.procedimientos %}<p><b>Procedimientos en los que participa:</b> {{ p.procedimientos|join('; ') }}</p>{% endif %}
-{% if p.indicadores %}<p><b>Indicadores a su cargo o de uso:</b> {{ p.indicadores|join('; ') }}</p>{% endif %}
-{% endif %}
-{% endfor %}
-{% endif %}
-
-{% if origenes %}
-<h2 class="sec">REFERENCIAS DE LOS PUESTOS DE ORIGEN</h2>
-<p class="nota">Las actividades recibidas pertenecen a estos puestos. Los mecanismos, procedimientos e indicadores se vinculan al puesto completo: conviene confirmar cuáles aplican a las actividades que recibe.</p>
-{% for o in origenes %}
-<h3 class="sub">{{ o.codigo }} - {{ o.nombre }}</h3>
-{% if o.mecanismos %}<p><b>Mecanismos:</b> {{ o.mecanismos|join('; ') }}</p>{% endif %}
-{% if o.procedimientos %}<p><b>Procedimientos:</b> {{ o.procedimientos|join('; ') }}</p>{% endif %}
-{% if o.indicadores %}<p><b>Indicadores:</b> {{ o.indicadores|join('; ') }}</p>{% endif %}
-{% endfor %}
-{% endif %}
-
-<div class="footer">Documento de trabajo de la reestructuración — {{ fecha }} — sujeto a validación con la Dirección</div>
+<h3 class="sub" style="margin-top:22px">Constancia de recepción</h3>
+<p>Recibí esta ficha y tomé conocimiento de las tareas, procedimientos, formularios y límites a mi cargo.</p>
+<table class="firmas">
+  <tr><td style="padding-top:40px">______________________________________</td><td style="padding-top:40px">______________________________________</td></tr>
+  <tr><td>Firma y aclaración — {{ persona.nombre_completo }}</td><td>Firma del jefe inmediato</td></tr>
+  <tr><td style="padding-top:14px">Fecha: ____ / ____ / ________</td><td style="padding-top:14px">Fecha: ____ / ____ / ________</td></tr>
+</table>
+<p class="nota" style="margin-top:14px">Documento de trabajo de la reestructuración. Las marcas «(provisorio)» y «(a validar)» señalan puntos que todavía
+  falta decidir o relevar; se quitan antes de la versión final.</p>
 </body></html>

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Traspaso — {{ puesto.codigo }}{% endblock %}
+{% block content %}
+{% set t = traspaso %}
+<div class="card">
+  <h2>{{ "Editar traspaso" if t else "Nuevo traspaso" }} — {{ puesto.codigo }} {{ puesto.nombre }}</h2>
+  <p class="meta">Quién entrega qué a quién, y con qué señal. Cada extremo puede ser un puesto del sistema o un texto
+    (por ejemplo «Responsable de voladura») cuando todavía no es un puesto. Uno de los dos extremos tiene que ser {{ puesto.codigo }}.
+    El texto, si se carga, es lo que se lee (sirve para precisar la posición: «Trituración, posición Primario»).</p>
+  <form class="inline" method="post" action="/ui/puestos/{{ puesto.codigo }}/traspasos">
+    {% if t %}<input type="hidden" name="tid" value="{{ t.id }}">{% endif %}
+    <label>Entrega — puesto</label>
+    <select name="de_puesto_codigo"><option value="">— no es un puesto del sistema —</option>
+      {% for p in puestos %}<option value="{{ p.codigo }}" {{ 'selected' if (t and t.de_puesto_codigo == p.codigo) or (not t and p.codigo == puesto.codigo) }}>{{ p.codigo }} — {{ p.nombre }}</option>{% endfor %}</select>
+    <label>Entrega — texto (opcional)</label>
+    <input type="text" name="de_texto" value="{{ t.de_texto or '' if t else '' }}">
+    <label>Recibe — puesto</label>
+    <select name="a_puesto_codigo"><option value="">— no es un puesto del sistema —</option>
+      {% for p in puestos %}<option value="{{ p.codigo }}" {{ 'selected' if t and t.a_puesto_codigo == p.codigo }}>{{ p.codigo }} — {{ p.nombre }}</option>{% endfor %}</select>
+    <label>Recibe — texto (opcional)</label>
+    <input type="text" name="a_texto" value="{{ t.a_texto or '' if t else '' }}">
+    <label>Qué entrega</label>
+    <input type="text" name="que_entrega" required value="{{ t.que_entrega if t else '' }}">
+    <label>Señal o condición (sin ella, el que recibe no actúa)</label>
+    <input type="text" name="senal" value="{{ t.senal or '' if t else '' }}">
+    <label>Orden</label>
+    <input type="number" name="orden" value="{{ t.orden if t else 0 }}" style="max-width:120px">
+    <div class="actions">
+      <button type="submit" class="primary">Guardar</button>
+      <a href="/ui/puestos/{{ puesto.codigo }}#traspasos" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -39,6 +39,12 @@ automáticamente desde ahí.
 - **v3.8 — Página de inicio y dashboard simplificado** (13 de octubre de 2026):
   - *Inicio*: la raíz (`/`) lleva ahora a `/ui/inicio`, con 4 indicadores (cobertura, pendientes, alertas, riesgos sin respaldo) y cuatro bloques: Estructura de la empresa, Asignación y cobertura, Procesos y control, Seguimiento. El logo y el menú superior vuelven a Inicio.
   - *Dashboard*: se reemplazó la pantalla larga por una franja de indicadores (cada uno lleva a su sección) y secciones plegables que se cargan sólo al abrirlas. Pendientes se subdivide en Urgente (abierto) y los demás grupos (cerrados). Se puede enlazar directo con `/ui/dashboard?abrir=pendientes|alertas|riesgos`.
+- **v3.9 — Fichas de puestos de producción, posiciones y ficha de puesto por persona en PDF** (20 de octubre de 2026):
+  - *Posiciones como dato del puesto*: se eliminó la «etapa» fija en el código para PRD-04 y PRD-05 (que generaba tres filas por planta: primaria, secundaria y «sin etapa»). Ahora un puesto puede tener posiciones (sección «Posiciones» de su ficha); si las tiene, al asignar se elige una y cada actividad es común o propia de una posición. Quien ocupa una posición lleva las comunes más las suyas. Los puestos sin posiciones se asignan igual que siempre. La clave de la posición se guarda en la columna heredada `asignaciones.etapa`.
+  - *Asignar más simple*: el selector de posición aparece sólo cuando el puesto lo requiere; en la cobertura cada posición es una fila. En puestos con dotación de varias personas (p. ej. Operador de Frente) se puede **sumar** otra persona sin reemplazar a quien está.
+  - *Ficha del puesto completa*: misión, dotación, reemplaza a, dónde empieza y termina su responsabilidad, equipos, límites que no se negocian, cómo se mide su desempeño y notas (se editan desde «Editar»); tareas ordenadas por momento de la jornada (antes de arrancar, durante, al cerrar, ante una falla) y por posición; procedimientos que aplica, formularios que completa (con para qué y cuándo y a quién) y «quién entrega qué a quién» (traspasos), todo vinculable desde la ficha.
+  - *Fichas de producción cargadas* (`scripts/datos_v3_9.py`): PRD-04 Operador de Planta de Trituración con posiciones Primario y Secundario y Terciario; PRD-05 Operador de Carga y Acarreo de Frente; nuevos PRD-08 Operador de Acopio y Despacho y PRD-09 Ayudante de Planta (opcional: aplica en Eldorado y San Borgita). ACT-143 a 156 dadas de baja, ACT-157 (combustible) pasa al Jefe de Planta para cederla al pañolero o designado, nuevas ACT-172 a 215. P-02 y P-05 reescritos, P-06 (carga al cliente) pasa a PRD-08, nuevos P-18 Bloqueo y etiquetado y P-19 Reglas comunes (Anexo A). Nuevos F-08.2 Parte de trituración y F-08.3 Parte de carga y acarreo; modelo del F-11 con firma de recepción. 15 traspasos (Anexo B). Lo que contradice lo cargado antes queda marcado «(provisorio)».
+  - *PDF por persona = ficha de puesto*: un bloque por cada puesto que ocupa, en el orden de la ficha, filtrado a lo suyo (su posición y sólo las tareas que lleva; las cedidas aparecen aparte con quién las lleva), con procedimientos y sus pasos (resaltados los de su puesto), formularios, límites, medición, mecanismos, traspasos, las tareas que recibe de otros puestos y constancia de recepción para firmar. El PDF del puesto usa la misma ficha, completa.
 
 **Afuera a propósito:**
 - Comparador de puestos — decisión de Jamaica, cada Puesto ya tiene ficha propia y navegable
@@ -69,6 +75,8 @@ python -m uvicorn main:app --reload --port 8000
 Abrir **http://localhost:8000** — abre la página de inicio.
 Usuario/clave: `eldorado` / `cantera2026` (los mismos de siempre; se pueden cambiar con las variables de entorno `ADMIN_USER` / `ADMIN_PASS`).
 
+**Importante (v3.9) — cómo actualizar:** si el equipo **ya empezó a cargar asignaciones a mano** en su base, NO la reemplacen por la de este zip: copien sólo el código, hagan una copia de seguridad de su `cantera.db` y corran una vez `python scripts/datos_v3_9.py` desde `backend/` (aplica el esquema nuevo y carga las fichas de producción; es idempotente). Si todavía no cargaron nada, pueden usar la `cantera.db` de este zip, que ya trae todo aplicado. Las asignaciones a PRD-04 y PRD-05 cargadas antes de la v3.9 quedan «sin posición»: conviene finalizarlas y volver a asignar con la posición.
+
 La base (`cantera.db`) ya viene con el esquema nuevo y los datos migrados — **Importante (v3.7):** la `cantera.db` de este zip ya trae las personas nuevas y las asignaciones reiniciadas, y tiene que usarse tal cual **esta única vez**. Una vez que el equipo empiece a cargar asignaciones a mano, de ahí en adelante NO se la reemplaza con la de ningún zip: se copia solo el código. La app aplica sola la migración nueva al arrancar; conviene hacer una copia de seguridad antes. No hace falta correr nada de Alembic ni el script de migración para usarlo tal cual.
 
 ## Estructura
@@ -77,11 +85,14 @@ La base (`cantera.db`) ya viene con el esquema nuevo y los datos migrados — **
 app/
   backend/
     main.py            → arma la app y conecta todos los routers
-    models.py           → los 24 Object Types / Junction Objects / Link Types
+    models.py           → Object Types, Junction Objects y Link Types
     database.py          → conexión SQLAlchemy
     aplicabilidad.py        → regla de qué puestos y actividades aplican en cada planta
     util_texto.py           → orden alfabético sin tildes
     scripts/datos_v3_7.py    → migración de datos de la v3.7 (ya aplicada; queda de referencia)
+    scripts/datos_v3_9.py    → fichas de puestos de producción (aplicada en la base del zip; correr en bases con datos propios)
+    posiciones.py           → regla de las posiciones dentro de un puesto (quién lleva qué actividades)
+    ficha_puesto.py         → arma la ficha completa de un puesto (pantalla, PDF del puesto y PDF por persona)
     reparto.py             → servicio de reparto: cesiones, traslados, cobertura por puesto, impacto de salidas
     functions.py          → cálculos que se corren al vuelo (cobertura, riesgo, alertas, semáforo)
     migrar_datos.py        → el script que migró los datos desde cantera_v2_origen.db (ya ejecutado, queda de referencia)
@@ -109,6 +120,8 @@ app/
 - `/ui/listado/{puestos|personas|plantas|actividades|mecanismos|procedimientos|indicadores|formularios}` — listados, con links a cada ficha, botón "+ Nuevo..." y (salvo Formulario) link "Ver también dados de baja"
 - `/ui/personas/{id}`, `/ui/puestos/{codigo}`, `/ui/plantas/{id}`, `/ui/actividades/{codigo}`, `/ui/mecanismos/{codigo}`, `/ui/procedimientos/{codigo}`, `/ui/indicadores/{codigo}` — la ficha de cada objeto, con botones Editar / Dar de baja / Dar de alta
 - `/ui/{tipo}/nuevo` y `/ui/{tipo}/{id}/editar` — formularios de alta y edición para cada uno de los 7 objetos
+- `/ui/puestos/{codigo}/posiciones/nueva`, `/ui/puestos/{codigo}/traspasos/nuevo` — posiciones y traspasos del puesto (también se vinculan formularios y procedimientos desde la ficha)
+- `/ui/puestos/{codigo}/pdf` — ficha del puesto completa; `/ui/reportes/personas/{id}.pdf` — ficha de puesto de una persona, para imprimir y firmar
 - `/ui/reportes` — reportes por persona, cobertura por puesto, exportes Excel y PDF; `/ui/reparto/{puesto}` — reparto de actividades de un puesto
 - `/api/...` — toda la API JSON, documentada automáticamente en `/docs`
 

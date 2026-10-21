@@ -31,6 +31,13 @@ from routers import (plantas, puestos, personas, actividades, convenios, mecanis
                      organigrama, ui_organigrama, formularios, ui_formularios, procedimientos, indicadores,
                      ui_reparto, ui_reportes, ui_aplicabilidad, ui_inicio)
 
+# v3.9: helpers de posiciones disponibles en todas las plantillas (cada router tiene su instancia de Jinja)
+import sys as _sys
+import posiciones as _posiciones
+for _nombre, _mod in list(_sys.modules.items()):
+    if _nombre.startswith("routers.") and hasattr(_mod, "templates"):
+        _posiciones.registrar_en(_mod.templates)
+
 app = FastAPI(title="SGO Cantera Eldorado v3 — por objetos")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")

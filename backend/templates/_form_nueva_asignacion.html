@@ -14,13 +14,13 @@
 <div id="modo-puesto" style="display:{{ 'none' if modo_default|default('puesto') == 'sueltas' else 'block' }}">
   <form class="inline" hx-post="/ui/personas/{{ persona.id }}/asignaciones/nueva" hx-target="#nueva-asignacion" hx-swap="innerHTML">
     <label>Puesto</label>
-    <select name="puesto_codigo" required onchange="document.getElementById('etapa-wrap').style.display = (this.value==='PRD-04'||this.value==='PRD-05') ? 'block':'none'">
+    <select name="puesto_codigo" required onchange="sgoPosiciones(this)">
       <option value="">-- elegir puesto --</option>
-      {% for p in puestos %}<option value="{{ p.codigo }}">{{ p.codigo }} — {{ p.nombre }}</option>{% endfor %}
+      {% for p in puestos %}<option value="{{ p.codigo }}" data-posiciones='{{ (posiciones_por_puesto or {}).get(p.codigo, [])|tojson }}'>{{ p.codigo }} — {{ p.nombre }}</option>{% endfor %}
     </select>
-    <div id="etapa-wrap" style="display:none">
-      <label>Etapa (Trituración y Carga y Acarreo tienen línea primaria y secundaria a la vez)</label>
-      <select name="etapa"><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select>
+    <div class="posicion-wrap" style="display:none">
+      <label>Posición <span class="meta">(este puesto tiene posiciones: elegí cuál ocupa)</span></label>
+      <select name="etapa"></select>
     </div>
     <label>Planta</label>
     <select name="planta_id" required>
@@ -50,3 +50,20 @@
     <div class="actions"><button type="submit" class="primary">Asignar actividades sueltas</button></div>
   </form>
 </div>
+
+<script>
+// v3.9: el selector de posición aparece sólo si el puesto elegido tiene posiciones
+function sgoPosiciones(sel) {
+  const form = sel.closest('form');
+  const wrap = form.querySelector('.posicion-wrap');
+  const destino = wrap.querySelector('select');
+  const opt = sel.options[sel.selectedIndex];
+  let pos = [];
+  try { pos = JSON.parse(opt.dataset.posiciones || '[]'); } catch (e) { pos = []; }
+  destino.innerHTML = '';
+  pos.forEach(([clave, nombre]) => { const o = document.createElement('option'); o.value = clave; o.textContent = nombre; destino.appendChild(o); });
+  wrap.style.display = pos.length ? 'block' : 'none';
+  destino.required = pos.length > 0;
+  destino.disabled = pos.length === 0;
+}
+</script>

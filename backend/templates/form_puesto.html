@@ -22,10 +22,27 @@
       <option value="unica_en_la_empresa" {% if (v.cardinalidad_esperada if v else '') == 'unica_en_la_empresa' %}selected{% endif %}>Única en la empresa</option>
       <option value="una_por_planta_activa" {% if (v.cardinalidad_esperada if v else '') == 'una_por_planta_activa' %}selected{% endif %}>Una por planta activa</option>
     </select>
-    <label>Propósito</label>
+    <label>Propósito / misión</label>
     <textarea name="proposito">{{ v.proposito if v else '' }}</textarea>
-    <label>Límites de autoridad</label>
+    <label>Límites de autoridad — límites que no se negocian (uno por línea)</label>
     <textarea name="limites_autoridad">{{ v.limites_autoridad if v else '' }}</textarea>
+    <fieldset class="ficha-campos">
+      <legend>Ficha del puesto <span class="meta">(opcional — se imprime en la ficha y en el PDF por persona)</span></legend>
+      <label>Dotación</label>
+      <input type="text" name="dotacion" value="{{ v.dotacion or '' if v else '' }}" placeholder="Ej.: dos por planta, una por posición">
+      <label>Reemplaza a</label>
+      <input type="text" name="reemplaza_a" value="{{ v.reemplaza_a or '' if v else '' }}">
+      <label>Su responsabilidad empieza</label>
+      <textarea name="alcance_inicio">{{ v.alcance_inicio or '' if v else '' }}</textarea>
+      <label>Su responsabilidad termina</label>
+      <textarea name="alcance_fin">{{ v.alcance_fin or '' if v else '' }}</textarea>
+      <label>Equipos a su cargo (uno por línea)</label>
+      <textarea name="equipos">{{ v.equipos or '' if v else '' }}</textarea>
+      <label>Cómo se mide su desempeño (uno por línea)</label>
+      <textarea name="medicion_desempeno">{{ v.medicion_desempeno or '' if v else '' }}</textarea>
+      <label>Notas que se imprimen en la ficha (autoridad, pendientes, aclaraciones)</label>
+      <textarea name="notas_ficha">{{ v.notas_ficha or '' if v else '' }}</textarea>
+    </fieldset>
     <label>Convenio colectivo</label>
     <select name="convenio_id">
       <option value="">— Sin convenio —</option>

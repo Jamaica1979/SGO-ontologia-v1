@@ -10,7 +10,7 @@
   {% for a in asignaciones %}
   <div class="row"><div class="main">
     {% if a.puesto_codigo %}<b>{{ a.puesto_codigo }}</b> — {{ a.puesto.nombre }}{% else %}📎 {{ a.perfil.nombre }}{% endif %}
-    <div class="meta">{{ a.planta.nombre }}{% if a.etapa and a.etapa != 'sin_etapa' %} · {{ a.etapa }}{% endif %}</div>
+    <div class="meta">{{ a.planta.nombre }}{% if a.etapa %} · {{ pos_nombre(a.puesto_codigo, a.etapa) }}{% endif %}</div>
   </div></div>
   {% endfor %}
 

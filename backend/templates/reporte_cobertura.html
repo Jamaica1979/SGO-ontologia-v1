@@ -37,7 +37,7 @@
     {% for f in filas %}
     <tr class="{{ 'sin-resp' if f.estado == 'sin_asignar' else '' }}">
       <td><a href="/ui/puestos/{{ f.puesto_codigo }}">{{ f.puesto_codigo }}</a> <span class="meta">{{ f.puesto_nombre }}</span>{% if f.se_reparte %}<br><span class="tag warn">no existe en esta planta: sus actividades se reparten</span>{% endif %}</td>
-      <td>{{ f.planta_nombre }}{% if f.etapa and f.etapa != 'sin_etapa' %} <span class="tag warn">{{ f.etapa }}</span>{% endif %}</td>
+      <td>{{ f.planta_nombre }}{% if f.etapa %} <span class="tag warn">{{ pos_nombre(f.puesto_codigo, f.etapa) }}</span>{% endif %}</td>
       <td><span class="tag {% if f.estado in ('cubierta','cubierta_sin_etapa') %}ok{% elif f.estado == 'parcial' %}warn{% else %}crit{% endif %}">{{ ESTADO_TXT.get(f.estado, f.estado) }}</span></td>
       <td class="num">{{ f.n_actividades }}</td>
       <td class="num">{{ f.n_por_titular }}</td>

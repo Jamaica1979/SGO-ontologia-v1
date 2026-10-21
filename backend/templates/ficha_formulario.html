@@ -44,6 +44,12 @@
   {% if nota_modelo %}<p class="meta">{{ nota_modelo }}</p>{% endif %}
   {% else %}<p class="empty">Modelo sin definir todavía. Se carga desde "Editar".</p>{% endif %}
 
+  <h3>Puestos que lo completan o reciben</h3>
+  {% for x in puestos %}
+  <div class="row"><div class="main"><a href="/ui/puestos/{{ x.puesto_codigo }}#formularios">{{ x.puesto_codigo }}</a> · {{ x.rol }}
+    {% if x.cuando %}<span class="meta">— {{ x.cuando }}</span>{% endif %}</div></div>
+  {% else %}<p class="empty">Ningún puesto vinculado (se vincula desde la ficha del puesto).</p>{% endfor %}
+
   <h3>Procedimientos que lo generan o usan</h3>
   {% for p in procedimientos %}
   <a href="/ui/procedimientos/{{ p.codigo }}" class="tag ok" style="margin:3px;text-decoration:none">{{ p.codigo }} — {{ p.nombre }}</a>
